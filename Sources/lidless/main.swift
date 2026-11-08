@@ -11,6 +11,7 @@ usage:
   lidless status                              show holds, power and setup state
   lidless release                             drop all holds now (panic button)
   lidless test-alert                          send a test alert to your phone (ntfy / webhook)
+  lidless doctor                              check the setup and show how to fix problems
   lidless --version
 
 `claude` sessions release the hold after 30 minutes idle (config: ~/.lidless/config.json).
@@ -57,6 +58,9 @@ case "status":
 case "release":
     expectArgs(rest, for: "release")
     exit(releaseCommand())
+case "doctor":
+    expectArgs(rest, for: "doctor")
+    exit(doctorCommand())
 case "test-alert":
     expectArgs(rest, for: "test-alert")
     exit(testAlertCommand())

@@ -9,6 +9,7 @@ lidless setup                     # once: sudoers rule for pmset + launchd watch
 lidless claude --remote-control     # close the lid, keep working from your phone
 lidless --sleep-after npm run build # sleep the Mac when the build finishes
 lidless status
+lidless doctor                      # something off? it tells you the fix
 lidless release                     # panic button
 ```
 

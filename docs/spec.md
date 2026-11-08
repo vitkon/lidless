@@ -24,6 +24,8 @@ The flag is system-wide and survives the process that set it, so lidless must gu
 | `lidless uninstall` | Remove both, and reset `disablesleep 0`. |
 | `lidless status` | Show holds, busy/idle state, battery, thermal, `SleepDisabled`. |
 | `lidless release` | Panic button: drop all holds and set `disablesleep 0`. |
+| `lidless doctor` | Check the setup; print the exact fix for each problem. Exit 1 if anything fails. |
+| `lidless test-alert` | Send a test alert to the configured channels. |
 | `lidless reap` | Hidden. Run by the watchdog every 60 s. |
 | `lidless hook <busy\|idle>` | Hidden. Invoked by Claude Code hooks. |
 
@@ -96,6 +98,23 @@ On a transition from held → released for `lowBattery` or `thermal`, send a mac
 ```
 
 `thermalLimit` is one of `fair`, `serious`, `critical`. No hard session cap.
+
+## Doctor (v2.0.3)
+
+`lidless doctor` gathers facts from the system and evaluates them with a pure, unit-tested function (`Doctor.evaluate`). Each check is ✓ ok, ! warn or ✗ fail, with a `fix:` command.
+
+| Check | Fails / warns when |
+|---|---|
+| sudoers | `sudo -n -l /usr/bin/pmset -a disablesleep 0` is refused (fail → `lidless setup`) |
+| watchdog | plist missing, its binary missing, or not loaded (fail); points at a different binary than the one running, or last exit ≠ 0 (warn) → `lidless setup --agent-only` |
+| binary | more than one `lidless` on PATH (warn) |
+| sleep flag | `SleepDisabled 1` with no live held hold (fail → `lidless release`) |
+| holds | hold files left by dead processes (warn → `lidless reap`) |
+| config | invalid JSON or wrong types (fail); unknown keys such as typos (warn) |
+| alerts | invalid ntfy server or webhook URL (fail); configured → suggests `lidless test-alert` |
+| auto-detect | on but the watchdog isn't loaded (fail) |
+| claude | not on PATH (warn) |
+| power | battery at the floor or thermal at the limit, so holds would be released (warn) |
 
 ## Auto-detect (v2.0.2)
 

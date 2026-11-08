@@ -27,16 +27,9 @@ On a `v*` tag, GitHub Actions builds and tests bottles on `macos-15` (arm64) and
 
 Opt-in `autoDetect: true`: the watchdog adopts `claude` sessions not started through lidless (including `claude --bg`), judging idleness by transcript writes with the same `idleTimeoutMinutes`. Details in [spec.md](spec.md#auto-detect-v202).
 
-## v2.3: `lidless doctor`
+## v2.0.3: `lidless doctor` (done)
 
-One command that checks and explains:
-- sudoers rule present, valid, and matches the current username
-- LaunchAgent loaded and pointing at an existing binary
-- stale `SleepDisabled 1` with no live holds
-- Claude Code version supports `--settings` hooks
-- battery health and current thermal state
-
-Each failure prints the exact command that fixes it.
+Checks sudoers, the watchdog, PATH shadowing, a stale `SleepDisabled`, dead holds, config validity and typos, alert URLs, auto-detect wiring, Claude Code, and battery/thermal state. Each problem prints the exact command that fixes it. Details in [spec.md](spec.md#doctor-v203).
 
 ## Later / maybe
 
