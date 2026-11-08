@@ -136,18 +136,7 @@ final class Wrapper {
     }
 
     func sendAlert(_ kind: AlertKind, readings r: Readings, exitCode: Int32?) {
-        guard config.alerts.isConfigured else { return }
-        let event = AlertEvent(
-            kind: kind, host: AlertSender.hostName(), command: record.command, pid: record.pid,
-            exitCode: exitCode, durationSeconds: Int(Date().timeIntervalSince(record.startedAt)),
-            batteryPercent: r.batteryPercent, onBattery: r.onBattery, thermal: r.thermal, at: Date())
-        do {
-            for res in AlertSender.send(try Alerts.requests(for: event, config: config)) where !res.ok {
-                stderrLine("alert to \(res.channel) failed: \(res.status.map { "HTTP \($0)" } ?? res.error ?? "unknown")")
-            }
-        } catch {
-            stderrLine("alert not sent: \(error)")
-        }
+        lidless.sendAlert(kind, record: record, readings: r, exitCode: exitCode, config: config)
     }
 
     /// The terminal delivers SIGINT to the whole foreground process group, so the child already

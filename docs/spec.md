@@ -97,6 +97,17 @@ On a transition from held → released for `lowBattery` or `thermal`, send a mac
 
 `thermalLimit` is one of `fair`, `serious`, `critical`. No hard session cap.
 
+## Auto-detect (v2.0.2)
+
+Opt-in with `"autoDetect": true`. The watchdog (`lidless reap`, every 60 s) also keeps the Mac awake for `claude` sessions that weren't started through lidless, including `claude --bg` background sessions.
+
+- **Detection:** a process is Claude Code if its executable is under `…/claude/versions/…` (native install; the kernel process name is the version number), its binary or `argv[0]` is `claude`, or it is `node` running `@anthropic-ai/claude-code`. Process info comes from `proc_listallpids`, `proc_pidpath`, `KERN_PROCARGS2` (argv) and `proc_pidinfo` (parent pid, cwd).
+- **Skipped:** sessions already wrapped (pid is a wrapper's `childPid`, or parent is a live lidless wrapper) and sessions already adopted.
+- **Adopted hold:** a hold record with `adopted: true`, `pid` = the claude process, and its `cwd`. Liveness checks that the pid is still a Claude Code process.
+- **Activity:** hooks can't be injected into a running process, so activity is the newest `*.jsonl` write in `~/.claude/projects/<cwd with non-alphanumerics replaced by "-">/`, never earlier than the adoption time. The same `idleTimeoutMinutes` applies. Weaker than hooks: a single tool call running longer than the timeout without transcript writes can be released mid-task.
+- **Same rules:** battery, thermal and idle decisions, alerts (no `finished` alert: there's no exit code to report), and macOS notifications.
+- `lidless release` marks adopted holds as manually released instead of deleting them, so they aren't immediately re-adopted. Turning `autoDetect` off drops all adopted holds on the next reap.
+
 ## Phone alerts (v2.0)
 
 With the lid shut you're on your phone, so a macOS notification is never seen. lidless can push alerts through [ntfy](https://ntfy.sh) and/or a generic webhook.
@@ -160,7 +171,7 @@ Install: `make install` → `~/.local/bin/lidless`.
 ## Out of scope for v1
 
 - Auto-detecting `claude` processes not started through lidless.
-- `claude --bg` background sessions (the `claude` CLI process exits immediately; nothing to wrap).
+- `claude --bg` background sessions can't be wrapped (the CLI exits immediately); auto-detect (v2.0.2) covers them.
 - Phone alerts (v2: optional `webhookURL`, e.g. ntfy.sh).
 - Homebrew formula, code signing, privileged helper, GUI.
 

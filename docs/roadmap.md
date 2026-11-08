@@ -19,22 +19,13 @@ Remote Control phone prompts were verified to fire the hooks, so no fallback was
 
 ntfy and webhook alerts for `lowBattery`, `thermal`, `idle` and `finished` (jobs of 5+ minutes), sent before the Mac is allowed to sleep. `lidless test-alert` checks the wiring. The open question about `finished` defaults was settled with `finishedMinMinutes: 5`. Details in [spec.md](spec.md#phone-alerts-v20).
 
-## v2.1: Homebrew bottles
+## v2.0.1: Homebrew bottles (done)
 
-**Problem.** The v1.1 formula builds from source, so users need Xcode or the Command Line Tools and wait for a compile.
+On a `v*` tag, GitHub Actions builds and tests bottles on `macos-15` (arm64) and `macos-15-intel`, attaches them to the GitHub release, merges the `bottle do` block into the formula and pushes it to `vitkon/homebrew-tap` (deploy key secret `TAP_DEPLOY_KEY`). A manual run with `publish=false` dry-runs the bottle build. `brew install` no longer needs Xcode on supported Macs. homebrew-core submission can come later once the tool has users.
 
-**Design.** GitHub Action on tag: run tests, build a universal binary, attach a bottle to the release and add the `bottle do` block to the formula. Submit to homebrew-core once the tool has some users.
+## v2.0.2: auto-detect sessions (done)
 
-## v2.2: auto-detect sessions
-
-**Problem.** A `claude` session started without `lidless` gets no protection.
-
-**Design.**
-- Optional `lidless watch` mode, run by the existing LaunchAgent: every 60 s list `claude` processes (`proc_listpids` + `proc_pidpath`), and create an *adopted* hold for each one not already wrapped.
-- Adopted holds can't inject hooks (the process is already running), so idle detection falls back to the session transcript mtime under `~/.claude/projects/`.
-- Opt-in via config `autoDetect: true`; off by default so v1 stays predictable.
-
-**Open questions.** Should adopted holds respect the same idle timeout, or a longer one since the signal is weaker?
+Opt-in `autoDetect: true`: the watchdog adopts `claude` sessions not started through lidless (including `claude --bg`), judging idleness by transcript writes with the same `idleTimeoutMinutes`. Details in [spec.md](spec.md#auto-detect-v202).
 
 ## v2.3: `lidless doctor`
 

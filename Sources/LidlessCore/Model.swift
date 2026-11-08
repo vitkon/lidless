@@ -60,9 +60,14 @@ public struct HoldRecord: Codable, Equatable, Sendable {
     public var reason: HoldReason
     /// False when the hold wants the Mac awake but `sudo pmset` was refused (setup missing).
     public var effective: Bool
+    /// True for a `claude` session picked up by auto-detect; `pid` is then the claude process.
+    public var adopted: Bool
+    /// Working directory of an adopted session, used to find its transcripts.
+    public var cwd: String?
 
     public init(pid: Int32, childPid: Int32? = nil, command: String, kind: HoldKind,
-                startedAt: Date, held: Bool, reason: HoldReason, effective: Bool = true) {
+                startedAt: Date, held: Bool, reason: HoldReason, effective: Bool = true,
+                adopted: Bool = false, cwd: String? = nil) {
         self.pid = pid
         self.childPid = childPid
         self.command = command
@@ -71,6 +76,8 @@ public struct HoldRecord: Codable, Equatable, Sendable {
         self.held = held
         self.reason = reason
         self.effective = effective
+        self.adopted = adopted
+        self.cwd = cwd
     }
 
     public init(from decoder: Decoder) throws {
@@ -83,6 +90,8 @@ public struct HoldRecord: Codable, Equatable, Sendable {
         held = try c.decode(Bool.self, forKey: .held)
         reason = try c.decode(HoldReason.self, forKey: .reason)
         effective = try c.decodeIfPresent(Bool.self, forKey: .effective) ?? true
+        adopted = try c.decodeIfPresent(Bool.self, forKey: .adopted) ?? false
+        cwd = try c.decodeIfPresent(String.self, forKey: .cwd)
     }
 }
 
@@ -92,6 +101,8 @@ public struct Config: Codable, Equatable, Sendable {
     public var thermalLimit: ThermalLevel = .serious
     public var notify: Bool = true
     public var alerts = AlertConfig()
+    /// Also keep the Mac awake for `claude` sessions not started through lidless.
+    public var autoDetect: Bool = false
 
     public init() {}
 
@@ -103,6 +114,7 @@ public struct Config: Codable, Equatable, Sendable {
         thermalLimit = try c.decodeIfPresent(ThermalLevel.self, forKey: .thermalLimit) ?? d.thermalLimit
         notify = try c.decodeIfPresent(Bool.self, forKey: .notify) ?? d.notify
         alerts = try c.decodeIfPresent(AlertConfig.self, forKey: .alerts) ?? d.alerts
+        autoDetect = try c.decodeIfPresent(Bool.self, forKey: .autoDetect) ?? d.autoDetect
     }
 
     public static func decode(_ data: Data) throws -> Config {

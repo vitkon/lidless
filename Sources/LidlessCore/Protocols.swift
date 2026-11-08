@@ -25,8 +25,9 @@ public protocol PowerReadingsSource {
 }
 
 public protocol ProcessProbe {
-    /// True if `pid` is alive and is a lidless process (guards against pid reuse).
-    func isLiveLidless(pid: Int32) -> Bool
+    /// True if the hold's owner is still running: the lidless wrapper, or for an adopted hold the
+    /// claude process itself (the name check guards against pid reuse).
+    func isLive(_ hold: HoldRecord) -> Bool
 }
 
 public protocol Notifier {

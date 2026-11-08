@@ -23,6 +23,10 @@ Config is in `~/.lidless/config.json`. Every key is optional:
 { "idleTimeoutMinutes": 30, "batteryFloorPercent": 10, "thermalLimit": "serious", "notify": true }
 ```
 
+### Sessions you forgot to wrap
+
+Add `"autoDetect": true` to the config and the watchdog also keeps the Mac awake for `claude` sessions started without lidless, including `claude --bg`. Idle time is judged from the session's transcript writes, with the same 30-minute timeout.
+
 ### Phone alerts
 
 Install the [ntfy](https://ntfy.sh) app, subscribe to a long random topic, then:

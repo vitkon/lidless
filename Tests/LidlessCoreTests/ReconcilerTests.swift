@@ -19,7 +19,7 @@ final class FakePower: PowerControl, @unchecked Sendable {
 
 final class FakeProbe: ProcessProbe, @unchecked Sendable {
     var alive: Set<Int32> = []
-    func isLiveLidless(pid: Int32) -> Bool { alive.contains(pid) }
+    func isLive(_ hold: HoldRecord) -> Bool { alive.contains(hold.pid) }
 }
 
 private func tempHome() -> LidlessPaths {

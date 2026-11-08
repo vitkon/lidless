@@ -38,6 +38,22 @@ enum AlertSender {
     }
 }
 
+/// Send an alert for a hold to every configured channel; failures go to stderr only.
+func sendAlert(_ kind: AlertKind, record: HoldRecord, readings r: Readings, exitCode: Int32?, config: Config) {
+    guard config.alerts.isConfigured else { return }
+    let event = AlertEvent(
+        kind: kind, host: AlertSender.hostName(), command: record.command, pid: record.pid,
+        exitCode: exitCode, durationSeconds: Int(Date().timeIntervalSince(record.startedAt)),
+        batteryPercent: r.batteryPercent, onBattery: r.onBattery, thermal: r.thermal, at: Date())
+    do {
+        for res in AlertSender.send(try Alerts.requests(for: event, config: config)) where !res.ok {
+            stderrLine("alert to \(res.channel) failed: \(res.status.map { "HTTP \($0)" } ?? res.error ?? "unknown")")
+        }
+    } catch {
+        stderrLine("alert not sent: \(error)")
+    }
+}
+
 func testAlertCommand() -> Int32 {
     let paths = LidlessPaths.standard()
     let config = Config.load(from: paths.config)

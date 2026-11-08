@@ -44,10 +44,19 @@ public struct Reconciler {
         try withLock { try reconcileLocked() }
     }
 
-    /// Panic button: delete every hold and turn sleep back on.
+    /// Panic button: drop every hold and turn sleep back on. Adopted holds are kept as
+    /// manually released (not deleted) so the watchdog doesn't immediately re-adopt them.
     public func releaseAll() throws {
         try withLock {
-            for r in store.list() { store.remove(pid: r.pid) }
+            for var r in store.list() {
+                if r.adopted {
+                    r.held = false
+                    r.reason = .manual
+                    try store.write(r)
+                } else {
+                    store.remove(pid: r.pid)
+                }
+            }
             _ = try reconcileLocked()
         }
     }
@@ -56,7 +65,7 @@ public struct Reconciler {
         var removed: [Int32] = []
         var desired = false
         for r in store.list() {
-            if probe.isLiveLidless(pid: r.pid) {
+            if probe.isLive(r) {
                 desired = desired || r.held
             } else {
                 store.remove(pid: r.pid)

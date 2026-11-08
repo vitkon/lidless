@@ -33,17 +33,69 @@ func hookCommand(_ state: String) -> Int32 {
     return 0
 }
 
+/// Run by the watchdog every 60 s: adopt/evaluate auto-detected claude sessions (if enabled),
+/// drop dead holds, and make `SleepDisabled` match.
 func reapCommand() -> Int32 {
-    let (reconciler, _) = makeReconciler()
+    let (reconciler, paths) = makeReconciler()
+    let store = reconciler.store
+    let probe = SystemProcessProbe()
+    let config = Config.load(from: paths.config)
+    let stamp = ISO8601DateFormatter().string(from: Date())
     do {
+        let holds = store.list()
+        if config.autoDetect || holds.contains(where: \.adopted) {
+            let plan = AutoDetect.plan(processes: config.autoDetect ? ProcessScanner.claudeProcesses() : [],
+                                       holds: holds, enabled: config.autoDetect)
+            for pid in plan.drop {
+                try reconciler.remove(pid: pid)
+                print("\(stamp) auto-detect off: dropped [\(pid)]")
+            }
+            for p in plan.adopt {
+                let command = p.argv.isEmpty ? (p.path as NSString).lastPathComponent : p.argv.joined(separator: " ")
+                try reconciler.update(HoldRecord(pid: p.pid, command: command, kind: .claude, startedAt: Date(),
+                                                 held: false, reason: .active, adopted: true, cwd: p.cwd))
+                print("\(stamp) adopted [\(p.pid)] \(command) in \(p.cwd ?? "?")")
+            }
+            try evaluateAdopted(reconciler: reconciler, probe: probe, config: config, stamp: stamp)
+        }
         let r = try reconciler.reconcile()
         if !r.removed.isEmpty || r.changed {
-            print("\(ISO8601DateFormatter().string(from: Date())) reaped \(r.removed) sleepDisabled=\(r.desired)")
+            print("\(stamp) reaped \(r.removed) sleepDisabled=\(r.desired)")
         }
         return 0
     } catch {
         stderrLine("\(error)")
         return 1
+    }
+}
+
+/// Adopted sessions have no hooks; their activity is the newest transcript write
+/// (never earlier than adoption, so a newly adopted session gets a full idle window).
+func evaluateAdopted(reconciler: Reconciler, probe: ProcessProbe, config: Config, stamp: String) throws {
+    let store = reconciler.store
+    let readings = SystemReadings().read()
+    for var r in store.list() where r.adopted && probe.isLive(r) {
+        let lastWrite = r.cwd.flatMap { AutoDetect.latestTranscriptWrite(cwd: $0) } ?? r.startedAt
+        let decision = decide(DecisionInput(
+            kind: .claude, startedAt: r.startedAt, activity: Activity(state: .idle, at: max(lastWrite, r.startedAt)),
+            readings: readings, config: config, now: Date(),
+            manuallyReleased: r.reason == .manual && !r.held))
+        if let kind = Alerts.kindForTransition(wasHeld: r.held, decision: decision) {
+            sendAlert(kind, record: r, readings: readings, exitCode: nil, config: config)
+            if kind != .idle, config.notify { OsascriptNotifier().notify("Letting the Mac sleep (\(kind.rawValue)).") }
+        }
+        guard decision.held != r.held || decision.reason != r.reason || !r.effective else { continue }
+        r.held = decision.held
+        r.reason = decision.reason
+        r.effective = true
+        do {
+            try reconciler.update(r)
+        } catch {
+            r.effective = false
+            try? store.write(r)
+            throw error
+        }
+        print("\(stamp) [\(r.pid)] \(r.held ? "holding" : "released (\(r.reason.rawValue))")")
     }
 }
 
@@ -72,7 +124,7 @@ func statusCommand() -> Int32 {
     print("power          \(r.onBattery ? "battery" : "AC"), \(battery), thermal \(r.thermal.rawValue)")
     print("setup          sudoers \(FileManager.default.fileExists(atPath: sudoersPath) ? "✓" : "✗ (run `lidless setup`)"), watchdog \(FileManager.default.fileExists(atPath: agentPlistURL.path) ? "✓" : "✗")")
     print("alerts         \(config.alerts.isConfigured ? config.alerts.channels.joined(separator: ", ") + " (" + config.alerts.events.map(\.rawValue).joined(separator: ", ") + ")" : "off (see `lidless test-alert`)")")
-    print("config         idle \(Int(config.idleTimeoutMinutes))m, battery floor \(config.batteryFloorPercent)%, thermal limit \(config.thermalLimit.rawValue)")
+    print("config         idle \(Int(config.idleTimeoutMinutes))m, battery floor \(config.batteryFloorPercent)%, thermal limit \(config.thermalLimit.rawValue), auto-detect \(config.autoDetect ? "on" : "off")")
 
     let holds = store.list()
     if holds.isEmpty {
@@ -82,12 +134,15 @@ func statusCommand() -> Int32 {
     print("holds")
     let now = Date()
     for h in holds {
-        let alive = probe.isLiveLidless(pid: h.pid)
+        let alive = probe.isLive(h)
         let state = !h.held ? "released (\(h.reason.rawValue))"
             : h.effective ? "holding" : "NOT holding (sudo pmset failed, run `lidless setup`)"
         var line = "  [\(h.pid)] \(state)"
         if !alive { line += " — DEAD, will be reaped" }
-        if h.kind == .claude {
+        if h.adopted {
+            let last = h.cwd.flatMap { AutoDetect.latestTranscriptWrite(cwd: $0) }
+            line += ", auto-detected, last transcript write " + (last.map { minutes(now.timeIntervalSince($0)) + " ago" } ?? "unknown")
+        } else if h.kind == .claude {
             if let a = store.readActivity(pid: h.pid) {
                 line += ", claude \(a.state.rawValue) for \(minutes(now.timeIntervalSince(a.at)))"
             } else {

@@ -90,11 +90,15 @@ struct SystemReadings: PowerReadingsSource {
 }
 
 struct SystemProcessProbe: ProcessProbe {
+    func isLive(_ hold: HoldRecord) -> Bool {
+        guard hold.adopted else { return isLiveLidless(pid: hold.pid) }
+        guard ProcessScanner.isAlive(hold.pid), let path = ProcessScanner.path(hold.pid) else { return false }
+        return AutoDetect.isClaudeProcess(path: path, argv: ProcessScanner.argv(hold.pid))
+    }
+
     func isLiveLidless(pid: Int32) -> Bool {
-        guard pid > 0, kill(pid, 0) == 0 || errno == EPERM else { return false }
-        var buf = [CChar](repeating: 0, count: 4096)
-        guard proc_pidpath(pid, &buf, UInt32(buf.count)) > 0 else { return false }
-        return (String(cString: buf) as NSString).lastPathComponent == "lidless"
+        guard ProcessScanner.isAlive(pid), let path = ProcessScanner.path(pid) else { return false }
+        return (path as NSString).lastPathComponent == "lidless"
     }
 }
 
