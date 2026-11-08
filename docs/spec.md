@@ -97,6 +97,36 @@ On a transition from held → released for `lowBattery` or `thermal`, send a mac
 
 `thermalLimit` is one of `fair`, `serious`, `critical`. No hard session cap.
 
+## Phone alerts (v2.0)
+
+With the lid shut you're on your phone, so a macOS notification is never seen. lidless can push alerts through [ntfy](https://ntfy.sh) and/or a generic webhook.
+
+```json
+{
+  "alerts": {
+    "ntfyTopic": "a-long-random-topic",
+    "ntfyServer": "https://ntfy.sh",
+    "ntfyToken": "tk_…",
+    "webhookURL": "https://example.com/hook",
+    "events": ["lowBattery", "thermal", "idle", "finished"],
+    "finishedMinMinutes": 5
+  }
+}
+```
+
+All keys are optional; alerts are off until `ntfyTopic` or `webhookURL` is set.
+
+| Event | Sent when |
+|---|---|
+| `lowBattery`, `thermal`, `idle` | a hold goes from held to released for that reason |
+| `finished` | the wrapped command exits after running at least `finishedMinMinutes`; includes exit code and duration |
+| `test` | `lidless test-alert` (ignores `events`) |
+
+- **ntfy** uses JSON publishing (`POST <server>` with `topic`, `title`, `message`, `priority`, `tags`), so non-ASCII host names work. `ntfyToken` adds `Authorization: Bearer`.
+- **Webhook** receives the event as JSON (`kind`, `host`, `command`, `pid`, `exitCode`, `durationSeconds`, `batteryPercent`, `onBattery`, `thermal`, `at`) plus `title` and `message`.
+- **Ordering:** alerts are sent synchronously (5 s timeout per request) **before** the hold is released, because with the lid shut the Mac sleeps right after and the request would never leave.
+- Failures are logged to stderr and never affect the wrapped command.
+
 ## Privilege model
 
 `lidless setup` writes `/etc/sudoers.d/lidless` (mode 0440, validated with `visudo -cf` before installing):

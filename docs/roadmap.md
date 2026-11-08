@@ -15,17 +15,9 @@ v1 (shipped 2026-11-08) is described in [spec.md](spec.md). This file tracks wha
 
 Remote Control phone prompts were verified to fire the hooks, so no fallback was needed.
 
-## v2.0: phone alerts (webhook)
+## v2.0: phone alerts (done)
 
-**Problem.** With the lid shut you're on your phone, so a macOS notification saying "letting the Mac sleep: battery low" is never seen. You find out only when the RC session goes dark.
-
-**Design.**
-- New config keys: `webhookURL` and `webhookEvents` (default `["lowBattery", "thermal", "idle", "exited"]`).
-- POST JSON `{event, reason, command, pid, battery, thermal, at}` with a 5 s timeout, fire-and-forget, from the wrapper.
-- First-class shortcut for [ntfy.sh](https://ntfy.sh): `"ntfyTopic": "my-mac"` posts a plain-text message with title and priority headers, no JSON wrangling.
-- `lidless test-alert` sends a sample event so you can check the wiring.
-
-**Open questions.** Should `exited` (job finished) be on by default? It's the most useful signal for long builds, but noisy for short commands. A minimum run time (e.g. only for jobs longer than 5 min) might settle it.
+ntfy and webhook alerts for `lowBattery`, `thermal`, `idle` and `finished` (jobs of 5+ minutes), sent before the Mac is allowed to sleep. `lidless test-alert` checks the wiring. The open question about `finished` defaults was settled with `finishedMinMinutes: 5`. Details in [spec.md](spec.md#phone-alerts-v20).
 
 ## v2.1: Homebrew bottles
 

@@ -71,6 +71,7 @@ func statusCommand() -> Int32 {
     print("SleepDisabled  \(disabled)")
     print("power          \(r.onBattery ? "battery" : "AC"), \(battery), thermal \(r.thermal.rawValue)")
     print("setup          sudoers \(FileManager.default.fileExists(atPath: sudoersPath) ? "✓" : "✗ (run `lidless setup`)"), watchdog \(FileManager.default.fileExists(atPath: agentPlistURL.path) ? "✓" : "✗")")
+    print("alerts         \(config.alerts.isConfigured ? config.alerts.channels.joined(separator: ", ") + " (" + config.alerts.events.map(\.rawValue).joined(separator: ", ") + ")" : "off (see `lidless test-alert`)")")
     print("config         idle \(Int(config.idleTimeoutMinutes))m, battery floor \(config.batteryFloorPercent)%, thermal limit \(config.thermalLimit.rawValue)")
 
     let holds = store.list()

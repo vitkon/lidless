@@ -247,11 +247,11 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
   <div>
     <h1>Shut the lid.<span class="line2">The work keeps going.</span></h1>
     <p class="lede">lidless keeps your MacBook awake with the lid closed, on battery, for as long as <strong>Claude Code</strong> or any other job is running. Start a Remote Control session, close the laptop, and carry on from your phone.</p>
-    <div class="install" role="group" aria-label="Run a Claude session with lidless">
-      <span><span class="prompt">$ </span>lidless claude --remote-control</span>
-      <button type="button" data-copy="lidless claude --remote-control">Copy</button>
+    <div class="install" role="group" aria-label="Install lidless with Homebrew">
+      <span><span class="prompt">$ </span>brew install vitkon/tap/lidless</span>
+      <button type="button" data-copy="brew install vitkon/tap/lidless">Copy</button>
     </div>
-    <p class="sub">macOS command-line tool. Free and open source.</p>
+    <p class="sub">Then run <code>lidless setup</code> once. macOS command-line tool, free and open source.</p>
   </div>
 
   <div class="stage">
@@ -346,6 +346,8 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
       <dd>Each job gets its own hold. The Mac can sleep again only after the last one finishes.</dd>
       <dt>Narrow permissions</dt>
       <dd>Setup adds one sudoers rule that allows exactly three <code>pmset</code> commands. Nothing else runs as root.</dd>
+      <dt>Phone alerts</dt>
+      <dd>Get a push notification through <a href="https://ntfy.sh">ntfy</a> or any webhook when the battery runs low, the Mac gets hot, Claude goes idle, or a long job finishes. Alerts go out before the Mac is allowed to sleep.</dd>
       <dt>Your limits</dt>
       <dd>Idle timeout, battery floor and heat limit live in <code>~/.lidless/config.json</code>.</dd>
     </dl>
@@ -357,12 +359,16 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
     <div>
       <h2>Install</h2>
       <p class="muted">Needs macOS 13 or later and Xcode or the Command Line Tools. Homebrew builds it from source; you can also clone the repo and run <code>make install</code>.</p>
+      <p class="muted">Update later with <code>brew upgrade lidless</code>.</p>
     </div>
     <ol class="steps">
       <li>Install with Homebrew.
 <pre class="term"><span class="p">$ </span>brew install vitkon/tap/lidless</pre></li>
       <li>Run setup once. It asks for your password to add the sudoers rule and the watchdog.
 <pre class="term"><span class="p">$ </span>lidless setup</pre></li>
+      <li>Optional: get alerts on your phone. Install the ntfy app, subscribe to a long random topic, and add it to <code>~/.lidless/config.json</code>.
+<pre class="term"><span class="p">$ </span>echo '{"alerts": {"ntfyTopic": "your-random-topic"}}' &gt; ~/.lidless/config.json
+<span class="p">$ </span>lidless test-alert</pre></li>
       <li>Start a session, close the lid, pick up your phone.
 <pre class="term"><span class="p">$ </span>lidless claude --remote-control</pre></li>
     </ol>
@@ -375,7 +381,7 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
       <h2>Coming next</h2>
     </div>
     <div>
-      <p class="muted">Phone alerts through a webhook or ntfy when the Mac is about to sleep, prebuilt Homebrew bottles, automatic pickup of Claude sessions started without lidless, and a <code>lidless doctor</code> command. The full list is in the <a href="https://github.com/vitkon/lidless/blob/main/docs/roadmap.md">roadmap</a>.</p>
+      <p class="muted">Prebuilt Homebrew bottles, automatic pickup of Claude sessions started without lidless, and a <code>lidless doctor</code> command. The full list is in the <a href="https://github.com/vitkon/lidless/blob/main/docs/roadmap.md">roadmap</a>.</p>
       <p class="muted">Use the lid-closed mode with the laptop somewhere ventilated. The safety limits help, but a closed MacBook inside a bag still gets hot.</p>
     </div>
   </div>
@@ -384,7 +390,7 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
 
 <footer>
   <div class="wrap">
-    <span>lidless is an independent project, not affiliated with Apple or Anthropic.</span>
+    <span>Built with ❤️ by <a href="https://github.com/vitkon">vitkon</a></span>
     <a href="https://github.com/vitkon/lidless">Source on GitHub</a>
   </div>
 </footer>

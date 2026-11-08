@@ -23,6 +23,17 @@ Config is in `~/.lidless/config.json`. Every key is optional:
 { "idleTimeoutMinutes": 30, "batteryFloorPercent": 10, "thermalLimit": "serious", "notify": true }
 ```
 
+### Phone alerts
+
+Install the [ntfy](https://ntfy.sh) app, subscribe to a long random topic, then:
+
+```sh
+echo '{"alerts": {"ntfyTopic": "your-random-topic"}}' > ~/.lidless/config.json
+lidless test-alert
+```
+
+You'll get a push when the battery runs low, the Mac gets hot, Claude goes idle, or a job of 5+ minutes finishes. A generic `webhookURL` is supported too. See the spec for all options.
+
 See [docs/spec.md](docs/spec.md) for the design and [docs/roadmap.md](docs/roadmap.md) for what's next.
 
 Project page: https://vitkon.github.io/lidless/

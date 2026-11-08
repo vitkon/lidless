@@ -1,1 +1,1 @@
-let lidlessVersion = "1.1.0"
+let lidlessVersion = "2.0.0"

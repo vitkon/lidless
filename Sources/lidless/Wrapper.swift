@@ -88,9 +88,15 @@ final class Wrapper {
         if wroteOnce && !store.exists(pid: record.pid) {
             manuallyReleased = true  // `lidless release` removed our hold
         }
+        let current = readings.read()
         let decision = decide(DecisionInput(
             kind: record.kind, startedAt: record.startedAt, activity: store.readActivity(pid: record.pid),
-            readings: readings.read(), config: config, now: Date(), manuallyReleased: manuallyReleased))
+            readings: current, config: config, now: Date(), manuallyReleased: manuallyReleased))
+
+        // Send before releasing: with the lid shut the Mac sleeps right after, and the alert would never leave.
+        if let kind = Alerts.kindForTransition(wasHeld: record.held, decision: decision) {
+            sendAlert(kind, readings: current, exitCode: nil)
+        }
 
         if record.held, !decision.held, decision.reason.isSafety, config.notify {
             let why = decision.reason == .lowBattery ? "battery is low" : "the Mac is running hot"
@@ -114,6 +120,10 @@ final class Wrapper {
 
     func finish(status: Int32) -> Never {
         timer?.cancel()
+        let exitCode: Int32 = (status & 0x7f) == 0 ? (status >> 8) & 0xff : 128 + (status & 0x7f)
+        if Alerts.shouldSendFinished(duration: Date().timeIntervalSince(record.startedAt), config: config.alerts) {
+            sendAlert(.finished, readings: readings.read(), exitCode: exitCode)
+        }
         do {
             let result = try reconciler.remove(pid: record.pid)
             if sleepAfter, !result.desired {
@@ -122,10 +132,22 @@ final class Wrapper {
         } catch {
             if !warnedPrivilege { stderrLine("\(error)") }
         }
-        if (status & 0x7f) == 0 {
-            exit((status >> 8) & 0xff)  // WIFEXITED → WEXITSTATUS
+        exit(exitCode)
+    }
+
+    func sendAlert(_ kind: AlertKind, readings r: Readings, exitCode: Int32?) {
+        guard config.alerts.isConfigured else { return }
+        let event = AlertEvent(
+            kind: kind, host: AlertSender.hostName(), command: record.command, pid: record.pid,
+            exitCode: exitCode, durationSeconds: Int(Date().timeIntervalSince(record.startedAt)),
+            batteryPercent: r.batteryPercent, onBattery: r.onBattery, thermal: r.thermal, at: Date())
+        do {
+            for res in AlertSender.send(try Alerts.requests(for: event, config: config)) where !res.ok {
+                stderrLine("alert to \(res.channel) failed: \(res.status.map { "HTTP \($0)" } ?? res.error ?? "unknown")")
+            }
+        } catch {
+            stderrLine("alert not sent: \(error)")
         }
-        exit(128 + (status & 0x7f))  // WTERMSIG
     }
 
     /// The terminal delivers SIGINT to the whole foreground process group, so the child already

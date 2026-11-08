@@ -91,6 +91,7 @@ public struct Config: Codable, Equatable, Sendable {
     public var batteryFloorPercent: Int = 10
     public var thermalLimit: ThermalLevel = .serious
     public var notify: Bool = true
+    public var alerts = AlertConfig()
 
     public init() {}
 
@@ -101,6 +102,7 @@ public struct Config: Codable, Equatable, Sendable {
         batteryFloorPercent = try c.decodeIfPresent(Int.self, forKey: .batteryFloorPercent) ?? d.batteryFloorPercent
         thermalLimit = try c.decodeIfPresent(ThermalLevel.self, forKey: .thermalLimit) ?? d.thermalLimit
         notify = try c.decodeIfPresent(Bool.self, forKey: .notify) ?? d.notify
+        alerts = try c.decodeIfPresent(AlertConfig.self, forKey: .alerts) ?? d.alerts
     }
 
     public static func decode(_ data: Data) throws -> Config {
