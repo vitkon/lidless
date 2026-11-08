@@ -71,15 +71,15 @@ final class Wrapper {
         tick()
         let t = DispatchSource.makeTimerSource(queue: .main)
         t.schedule(deadline: .now() + Self.tickInterval, repeating: Self.tickInterval, leeway: .seconds(2))
-        t.setEventHandler { [weak self] in self?.tick() }
+        t.setEventHandler { self.tick() }
         t.resume()
         timer = t
 
         let pid = childPid
-        Thread.detachNewThread { [weak self] in
+        Thread.detachNewThread {
             var status: Int32 = 0
             while waitpid(pid, &status, 0) == -1 && errno == EINTR {}
-            DispatchQueue.main.async { self?.finish(status: status) }
+            DispatchQueue.main.async { self.finish(status: status) }
         }
         dispatchMain()
     }
@@ -158,8 +158,8 @@ final class Wrapper {
         for sig in [SIGTERM, SIGHUP] {
             signal(sig, SIG_IGN)
             let src = DispatchSource.makeSignalSource(signal: sig, queue: .main)
-            src.setEventHandler { [weak self] in
-                if let pid = self?.childPid, pid > 0 { kill(pid, sig) }
+            src.setEventHandler {
+                if self.childPid > 0 { kill(self.childPid, sig) }
             }
             src.resume()
             signalSources.append(src)
@@ -167,7 +167,7 @@ final class Wrapper {
         // A hook saw activity resume after an idle release: re-evaluate now.
         signal(SIGUSR1, SIG_IGN)
         let wake = DispatchSource.makeSignalSource(signal: SIGUSR1, queue: .main)
-        wake.setEventHandler { [weak self] in self?.tick() }
+        wake.setEventHandler { self.tick() }
         wake.resume()
         signalSources.append(wake)
     }

@@ -29,6 +29,9 @@ func expectArgs(_ rest: [String], allowed: Set<String> = [], for command: String
     }
 }
 
+/// Global so the wrapper is never deallocated while its run loop (dispatchMain) is going.
+var activeWrapper: Wrapper?
+
 var args = Array(CommandLine.arguments.dropFirst())
 let rest = Array(args.dropFirst())
 
@@ -74,5 +77,7 @@ default:
         usageError("unknown option: \(flag)")
     }
     guard !args.isEmpty else { usageError("missing command to run") }
-    Wrapper(argv: args, sleepAfter: sleepAfter).run(argv: args)
+    let wrapper = Wrapper(argv: args, sleepAfter: sleepAfter)
+    activeWrapper = wrapper
+    wrapper.run(argv: args)
 }
