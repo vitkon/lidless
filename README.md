@@ -23,4 +23,6 @@ Config is in `~/.lidless/config.json`. Every key is optional:
 { "idleTimeoutMinutes": 30, "batteryFloorPercent": 10, "thermalLimit": "serious", "notify": true }
 ```
 
-See [docs/spec.md](docs/spec.md) for the design.
+See [docs/spec.md](docs/spec.md) for the design and [docs/roadmap.md](docs/roadmap.md) for what's next.
+
+Project page: https://vitkon.github.io/lidless/

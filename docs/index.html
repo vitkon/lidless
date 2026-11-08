@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lidless</title>
+<meta name="description" content="A macOS command-line tool that keeps your MacBook awake with the lid closed while Claude Code, or any long job, is running.">
+<meta property="og:title" content="lidless">
+<meta property="og:description" content="Shut the lid. The work keeps going. Keep a MacBook awake with the lid closed while Claude Code runs.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,300..800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='17' width='26' height='4' rx='2' fill='%2325282D'/%3E%3Crect x='3' y='14' width='26' height='2.4' rx='1.2' fill='%2325282D'/%3E%3Crect x='5' y='16.2' width='22' height='1' fill='%23F2A22C'/%3E%3C/svg%3E">
+<style>
+:root {
+  --page: #DCDFE2;
+  --page-raised: #E6E8EA;
+  --ink: #25282D;
+  --ink-soft: #5C6470;
+  --rule: #BCC1C7;
+  --amber: #F2A22C;
+  --amber-ink: #8A5400;
+  --term-bg: #25282D;
+  --term-ink: #DCDFE2;
+  --term-dim: #8C939C;
+  --metal-top: #C9CDD2;
+  --metal-edge: #9CA3AB;
+  --room: #25282D;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #1F2226;
+    --page-raised: #272A2F;
+    --ink: #DCDFE2;
+    --ink-soft: #9AA1AA;
+    --rule: #3A3F46;
+    --amber-ink: #F2A22C;
+    --term-bg: #15171A;
+    --metal-top: #5B626B;
+    --metal-edge: #3E444B;
+    --room: #15171A;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #1F2226;
+  --page-raised: #272A2F;
+  --ink: #DCDFE2;
+  --ink-soft: #9AA1AA;
+  --rule: #3A3F46;
+  --amber-ink: #F2A22C;
+  --term-bg: #15171A;
+  --metal-top: #5B626B;
+  --metal-edge: #3E444B;
+  --room: #15171A;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  font-variation-settings: "wdth" 100;
+  font-size: 1.125rem;
+  line-height: 1.55;
+}
+a { color: inherit; text-decoration-color: var(--amber); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+a:hover { color: var(--amber-ink); }
+:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; border-radius: 2px; }
+code, pre { font-family: "JetBrains Mono", ui-monospace, monospace; }
+p code, li code, dd code {
+  font-size: 0.85em;
+  background: var(--page-raised);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 0.05em 0.35em;
+}
+
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+@media (max-width: 600px) { .wrap { padding: 0 16px; } }
+
+/* top bar */
+.bar { display: flex; justify-content: space-between; align-items: center; padding-block: 22px; }
+.wordmark { font-weight: 700; font-size: 1.25rem; letter-spacing: -0.01em; text-decoration: none; }
+.wordmark span { display: inline-block; width: 0.9em; height: 2px; background: var(--amber); vertical-align: middle; margin-left: 0.25em; }
+.bar nav { display: flex; gap: 22px; font-size: 1rem; }
+.bar nav a { text-decoration: none; color: var(--ink-soft); }
+.bar nav a:hover { color: var(--ink); }
+
+/* hero */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 48px;
+  align-items: center;
+  padding-block: 56px 88px;
+}
+.hero h1 {
+  font-size: clamp(3rem, 8.2vw, 6.4rem);
+  line-height: 0.92;
+  font-weight: 760;
+  font-variation-settings: "wdth" 78, "opsz" 96;
+  letter-spacing: -0.03em;
+  margin: 0 0 28px;
+}
+.hero h1 .line2 { display: block; font-weight: 300; font-variation-settings: "wdth" 100, "opsz" 96; }
+.lede { font-size: 1.3rem; line-height: 1.5; color: var(--ink-soft); max-width: 34ch; margin: 0 0 32px; }
+.lede strong { color: var(--ink); font-weight: 600; }
+
+.install {
+  display: inline-flex; align-items: center; gap: 14px;
+  background: var(--term-bg); color: var(--term-ink);
+  padding: 14px 18px; border-radius: 10px;
+  font-family: "JetBrains Mono", monospace; font-size: 0.95rem;
+  max-width: 100%; overflow-x: auto;
+}
+.install .prompt { color: var(--amber); user-select: none; }
+.install button {
+  font: inherit; font-size: 0.8rem; color: var(--term-dim);
+  background: none; border: 1px solid #454a52; border-radius: 6px;
+  padding: 4px 10px; cursor: pointer; white-space: nowrap;
+}
+.install button:hover { color: var(--term-ink); border-color: var(--term-dim); }
+.hero .sub { font-size: 0.95rem; color: var(--ink-soft); margin-top: 14px; }
+
+/* laptop, in a dark room */
+.stage {
+  position: relative;
+  background: var(--room);
+  border-radius: 18px;
+  overflow: hidden;
+}
+.laptop { width: 100%; height: auto; display: block; }
+.lid {
+  transform-box: view-box;
+  transform-origin: 432px 330px;
+  transform: rotate(0deg);
+  animation: close 1.7s cubic-bezier(.55,.05,.3,1) 0.5s both;
+}
+.screen-glow { animation: dim 1.7s ease-in 0.5s both; }
+.seam { animation: seam 0.9s ease-out 2.05s both; }
+.spill { animation: spill 1.2s ease-out 2.05s both; }
+.status { animation: seam 0.8s ease-out 2.5s both; }
+@keyframes close { from { transform: rotate(100deg); } to { transform: rotate(0deg); } }
+@keyframes dim { from { opacity: 1; } 70% { opacity: 0.6; } to { opacity: 0; } }
+@keyframes seam { from { opacity: 0; } to { opacity: 1; } }
+@keyframes spill { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .lid, .screen-glow, .seam, .spill, .status { animation: none; }
+  .screen-glow { opacity: 0; }
+}
+.status {
+  position: absolute; top: 26px; left: 28px; right: 20px;
+  margin: 0; color: #DCDFE2;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.8rem; line-height: 1.75;
+  white-space: pre; overflow: hidden;
+}
+.status .k { color: #8C939C; }
+.status .on { color: #F2A22C; }
+@media (max-width: 520px) { .status { font-size: 0.68rem; top: 18px; left: 18px; } }
+
+/* sections */
+section { padding: 72px 0; border-top: 1px solid var(--rule); }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 48px; }
+h2 {
+  font-size: clamp(1.9rem, 3.6vw, 2.6rem);
+  line-height: 1.05; font-weight: 700;
+  font-variation-settings: "wdth" 85, "opsz" 60;
+  letter-spacing: -0.02em;
+  margin: 0 0 16px;
+}
+.two > div > p:first-of-type { margin-top: 0; }
+.muted { color: var(--ink-soft); }
+p { max-width: 62ch; }
+
+pre.term {
+  background: var(--term-bg); color: var(--term-ink);
+  border-radius: 12px; padding: 22px 24px; margin: 0;
+  font-size: 0.88rem; line-height: 1.7; overflow-x: auto;
+}
+pre.term .c { color: var(--term-dim); }
+pre.term .p { color: var(--amber); user-select: none; }
+
+/* decision order: a real sequence, so numbers */
+ol.order { list-style: none; counter-reset: rule; padding: 0; margin: 0; }
+ol.order li {
+  counter-increment: rule;
+  display: grid; grid-template-columns: 3.2rem 1fr; gap: 4px 12px;
+  padding: 18px 0; border-bottom: 1px solid var(--rule);
+}
+ol.order li:first-child { padding-top: 0; }
+ol.order li::before {
+  content: counter(rule);
+  grid-row: span 2;
+  font-size: 2rem; line-height: 1; font-weight: 300;
+  font-variation-settings: "wdth" 75, "opsz" 96;
+  color: var(--ink-soft);
+}
+ol.order li:last-child { border-bottom: 0; }
+ol.order li:last-child::before { color: var(--amber-ink); font-weight: 600; }
+ol.order b { font-weight: 650; }
+ol.order span { color: var(--ink-soft); font-size: 1rem; }
+
+/* guardrails */
+dl.guards { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 0 32px; }
+dl.guards dt, dl.guards dd { padding: 16px 0; border-bottom: 1px solid var(--rule); margin: 0; }
+dl.guards dt { font-weight: 650; }
+dl.guards dd { color: var(--ink-soft); }
+dl.guards dt:last-of-type, dl.guards dd:last-of-type { border-bottom: 0; }
+
+ol.steps { padding-left: 1.4em; margin: 0; }
+ol.steps li { padding-left: 0.4em; margin-bottom: 22px; }
+ol.steps li::marker { color: var(--ink-soft); font-weight: 600; }
+ol.steps pre.term { margin-top: 10px; font-size: 0.85rem; padding: 14px 18px; }
+
+footer { border-top: 1px solid var(--rule); padding: 32px 0 48px; color: var(--ink-soft); font-size: 0.95rem; }
+footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+@media (max-width: 860px) {
+  .hero { grid-template-columns: minmax(0, 1fr); padding-block: 32px 64px; gap: 40px; }
+  .two { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+}
+@media (max-width: 520px) {
+  .bar nav a.hide-sm { display: none; }
+  dl.guards { grid-template-columns: 1fr; }
+  dl.guards dt { border-bottom: 0; padding-bottom: 2px; }
+  dl.guards dd { padding-top: 0; }
+  section { padding: 56px 0; }
+}
+</style>
+</head>
+<body>
+
+<header class="wrap bar">
+  <a class="wordmark" href="#" aria-label="lidless home">lidless<span aria-hidden="true"></span></a>
+  <nav>
+    <a href="#how" class="hide-sm">How it works</a>
+    <a href="#install">Install</a>
+    <a href="https://github.com/vitkon/lidless">GitHub</a>
+  </nav>
+</header>
+
+<main>
+<div class="wrap hero">
+  <div>
+    <h1>Shut the lid.<span class="line2">The work keeps going.</span></h1>
+    <p class="lede">lidless keeps your MacBook awake with the lid closed, on battery, for as long as <strong>Claude Code</strong> or any other job is running. Start a Remote Control session, close the laptop, and carry on from your phone.</p>
+    <div class="install" role="group" aria-label="Run a Claude session with lidless">
+      <span><span class="prompt">$ </span>lidless claude --remote-control</span>
+      <button type="button" data-copy="lidless claude --remote-control">Copy</button>
+    </div>
+    <p class="sub">macOS command-line tool. Free and open source.</p>
+  </div>
+
+  <div class="stage">
+    <svg class="laptop" viewBox="0 0 520 380" role="img" aria-label="A MacBook seen from the side closes its lid in a dark room. A thin line of amber light stays lit in the seam.">
+      <defs>
+        <radialGradient id="g-screen" cx="0.6" cy="0.85" r="0.75">
+          <stop offset="0" stop-color="#F2A22C" stop-opacity="0.35"/>
+          <stop offset="1" stop-color="#F2A22C" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="g-spill" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stop-color="#F2A22C" stop-opacity="0.45"/>
+          <stop offset="1" stop-color="#F2A22C" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="g-metal" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#C9CDD2"/>
+          <stop offset="1" stop-color="#8E959D"/>
+        </linearGradient>
+      </defs>
+      <!-- table -->
+      <rect x="0" y="352" width="520" height="28" fill="#000" opacity="0.18"/>
+      <ellipse class="screen-glow" cx="330" cy="250" rx="240" ry="170" fill="url(#g-screen)"/>
+      <ellipse class="spill" cx="258" cy="330" rx="230" ry="26" fill="url(#g-spill)"/>
+      <!-- base -->
+      <rect x="86" y="332" width="350" height="17" rx="5" fill="url(#g-metal)"/>
+      <rect x="98" y="349" width="16" height="3" rx="1.5" fill="#6F767E"/>
+      <rect x="408" y="349" width="16" height="3" rx="1.5" fill="#6F767E"/>
+      <!-- seam light -->
+      <rect class="seam" x="96" y="329.6" width="330" height="2.2" rx="1.1" fill="#F2A22C"/>
+      <!-- lid, hinged at the right -->
+      <g class="lid">
+        <rect x="86" y="319" width="348" height="11" rx="4.5" fill="url(#g-metal)"/>
+        <rect x="100" y="327.6" width="320" height="2.2" rx="1" fill="#1A1C1F" opacity="0.7"/>
+      </g>
+      <circle cx="432" cy="330" r="3.5" fill="#6F767E"/>
+    </svg>
+<pre class="status" aria-label="Example output of lidless status"><span class="k">$ lidless status</span>
+<span class="k">SleepDisabled</span>  <span class="on">1 (Mac stays awake)</span>
+<span class="k">power</span>          battery, 64%, thermal nominal
+<span class="k">holds</span>
+  [4812] holding, claude busy for 3m
+         claude --remote-control</pre>
+  </div>
+</div>
+
+<section id="how">
+  <div class="wrap two">
+    <div>
+      <h2>Wrap the command. That's the whole interface.</h2>
+      <p class="muted">Put <code>lidless</code> in front of anything. While it runs, the Mac won't sleep, even with the lid shut. When it ends, sleep comes back on its own.</p>
+    </div>
+    <pre class="term"><span class="c"># a Remote Control session you'll drive from your phone</span>
+<span class="p">$ </span>lidless claude --remote-control
+
+<span class="c"># a long build, then put the Mac to sleep when it's done</span>
+<span class="p">$ </span>lidless --sleep-after npm run build
+
+<span class="c"># see what's keeping the Mac awake</span>
+<span class="p">$ </span>lidless status
+
+<span class="c"># let it sleep right now</span>
+<span class="p">$ </span>lidless release</pre>
+  </div>
+</section>
+
+<section>
+  <div class="wrap two">
+    <div>
+      <h2>Knows when Claude has gone quiet</h2>
+      <p class="muted">For <code>claude</code> sessions, lidless listens to Claude Code's own hooks, so it can tell a session that's working from one that's waiting. Your global settings are never touched; the hooks exist only for that run.</p>
+      <p class="muted">Every 30 seconds it checks these rules in order. The first one that matches decides.</p>
+    </div>
+    <ol class="order">
+      <li><b>You pressed release</b><span>Running <code>lidless release</code> lets the Mac sleep for the rest of that run.</span></li>
+      <li><b>Battery is nearly empty</b><span>On battery at 10% or less, the Mac is allowed to sleep, so it can resume later instead of shutting down.</span></li>
+      <li><b>The chip is running hot</b><span>If macOS reports serious thermal pressure, lidless lets go until things cool down.</span></li>
+      <li><b>Claude has been idle for 30 minutes</b><span>The session keeps running. Send a new prompt and the Mac is held awake again.</span></li>
+      <li><b>Otherwise, stay awake</b><span>The job is active, so the Mac stays on.</span></li>
+    </ol>
+  </div>
+</section>
+
+<section>
+  <div class="wrap two">
+    <div>
+      <h2>Built so it can't strand your Mac awake</h2>
+      <p class="muted">Keeping a closed laptop awake changes a system-wide setting. lidless treats putting it back as its most important job.</p>
+    </div>
+    <dl class="guards">
+      <dt>Crash recovery</dt>
+      <dd>A small background watchdog checks every minute. If a lidless process dies without cleaning up, sleep is switched back on.</dd>
+      <dt>Several jobs at once</dt>
+      <dd>Each job gets its own hold. The Mac can sleep again only after the last one finishes.</dd>
+      <dt>Narrow permissions</dt>
+      <dd>Setup adds one sudoers rule that allows exactly three <code>pmset</code> commands. Nothing else runs as root.</dd>
+      <dt>Your limits</dt>
+      <dd>Idle timeout, battery floor and heat limit live in <code>~/.lidless/config.json</code>.</dd>
+    </dl>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap two">
+    <div>
+      <h2>Install</h2>
+      <p class="muted">Needs macOS 13 or later and Xcode or the Command Line Tools. A Homebrew formula is <a href="https://github.com/vitkon/lidless/blob/main/docs/roadmap.md">on the roadmap</a>.</p>
+    </div>
+    <ol class="steps">
+      <li>Build and install to <code>~/.local/bin</code>.
+<pre class="term"><span class="p">$ </span>git clone https://github.com/vitkon/lidless
+<span class="p">$ </span>cd lidless && make install</pre></li>
+      <li>Run setup once. It asks for your password to add the sudoers rule and the watchdog.
+<pre class="term"><span class="p">$ </span>lidless setup</pre></li>
+      <li>Start a session, close the lid, pick up your phone.
+<pre class="term"><span class="p">$ </span>lidless claude --remote-control</pre></li>
+    </ol>
+  </div>
+</section>
+
+<section>
+  <div class="wrap two">
+    <div>
+      <h2>Coming next</h2>
+    </div>
+    <div>
+      <p class="muted">Phone alerts through a webhook or ntfy when the Mac is about to sleep, a Homebrew formula, automatic pickup of Claude sessions started without lidless, and a <code>lidless doctor</code> command. The full list is in the <a href="https://github.com/vitkon/lidless/blob/main/docs/roadmap.md">roadmap</a>.</p>
+      <p class="muted">Use the lid-closed mode with the laptop somewhere ventilated. The safety limits help, but a closed MacBook inside a bag still gets hot.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>lidless is an independent project, not affiliated with Apple or Anthropic.</span>
+    <a href="https://github.com/vitkon/lidless">Source on GitHub</a>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll('[data-copy]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var text = btn.getAttribute('data-copy');
+      var done = function () { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy'; }, 1600); };
+      if (navigator.clipboard) { navigator.clipboard.writeText(text).then(done, function () {}); }
+    });
+  });
+</script>
+</body>
+</html>
