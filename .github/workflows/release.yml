@@ -53,14 +53,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Oldest supported arm64 runner first: Homebrew uses an older-macOS bottle on newer macOS.
-        os: [macos-14, macos-15]
+        # Homebrew uses a bottle on the macOS it was built for and anything newer.
+        os: [macos-15, macos-15-intel]
     runs-on: ${{ matrix.os }}
     env:
       V: ${{ needs.version.outputs.version }}
       SHA: ${{ needs.version.outputs.sha256 }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
@@ -78,7 +78,7 @@ jobs:
             mv "$(jq -r '.[].bottle.tags[].local_filename' "$j")" "$(jq -r '.[].bottle.tags[].filename' "$j")"
           done
           ls -la *.bottle.*
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: bottle-${{ matrix.os }}
           path: "*.bottle.*"
@@ -91,8 +91,8 @@ jobs:
       V: ${{ needs.version.outputs.version }}
       SHA: ${{ needs.version.outputs.sha256 }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
         with:
           path: bottles
           merge-multiple: true
