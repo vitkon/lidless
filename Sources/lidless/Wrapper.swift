@@ -34,8 +34,9 @@ final class Wrapper {
         self.sleepAfter = sleepAfter
         record = HoldRecord(
             pid: getpid(), command: argv.joined(separator: " "),
-            kind: ClaudeInjection.isClaude(argv[0]) ? .claude : .plain,
-            startedAt: Date(), held: false, reason: .active)
+            kind: AutoDetect.wrapperKind(argv[0]),
+            startedAt: Date(), held: false, reason: .active,
+            cwd: FileManager.default.currentDirectoryPath)
     }
 
     func run(argv: [String]) -> Never {
@@ -53,6 +54,11 @@ final class Wrapper {
                 stderrLine("\(error) — running without idle detection")
                 record.kind = .plain
             }
+        }
+
+        if record.kind == .codex, argv.contains("remote-control") || argv.contains("app") {
+            stderrLine("warning: this codex command starts a background process and exits, so lidless can't hold it. "
+                       + "Set \"autoDetect\": true in ~/.lidless/config.json to keep the Mac awake for it instead.")
         }
 
         installSignalHandlers()
@@ -90,7 +96,7 @@ final class Wrapper {
         }
         let current = readings.read()
         let decision = decide(DecisionInput(
-            kind: record.kind, startedAt: record.startedAt, activity: store.readActivity(pid: record.pid),
+            kind: record.kind, startedAt: record.startedAt, activity: currentActivity(),
             readings: current, config: config, now: Date(), manuallyReleased: manuallyReleased))
 
         // Send before releasing: with the lid shut the Mac sleeps right after, and the alert would never leave.
@@ -116,6 +122,20 @@ final class Wrapper {
             }
         }
         wroteOnce = true
+    }
+
+    /// Claude reports through hooks; Codex hooks need per-hook approval, so its activity is the
+    /// newest write to its session files (never earlier than our start).
+    func currentActivity() -> Activity? {
+        switch record.kind {
+        case .claude:
+            return store.readActivity(pid: record.pid)
+        case .codex:
+            let last = AutoDetect.latestCodexWrite(cwd: record.cwd, since: record.startedAt) ?? record.startedAt
+            return Activity(state: .idle, at: max(last, record.startedAt))
+        case .plain:
+            return nil
+        }
     }
 
     func finish(status: Int32) -> Never {

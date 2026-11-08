@@ -51,7 +51,12 @@ func doctorCommand() -> Int32 {
         ? claude?.stdout.split(separator: "\n").first.map { String($0).trimmingCharacters(in: .whitespaces) }
         : nil
 
-    let facts = DoctorFacts(
+    let codex = try? shell("/usr/bin/env", ["codex", "--version"])
+    let codexVersion = codex?.status == 0
+        ? codex?.stdout.split(separator: "\n").first.map { String($0).trimmingCharacters(in: .whitespaces) }
+        : nil
+
+    var facts = DoctorFacts(
         sudoAllowed: sudoAllowed,
         agentPlistExists: plist != nil, agentProgram: agentProgram,
         agentProgramExists: agentProgram.map { fm.isExecutableFile(atPath: $0) } ?? false,
@@ -62,6 +67,7 @@ func doctorCommand() -> Int32 {
         configExists: configData != nil, configError: configError,
         unknownConfigKeys: configData.map(Doctor.unknownKeys(in:)) ?? [], alertsError: alertsError,
         claudeVersion: claudeVersion, readings: SystemReadings().read(), config: config)
+    facts.codexVersion = codexVersion
 
     let checks = Doctor.evaluate(facts)
     print("lidless \(lidlessVersion) doctor\n")

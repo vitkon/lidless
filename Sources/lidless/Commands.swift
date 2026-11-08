@@ -44,7 +44,7 @@ func reapCommand() -> Int32 {
     do {
         let holds = store.list()
         if config.autoDetect || holds.contains(where: \.adopted) {
-            let plan = AutoDetect.plan(processes: config.autoDetect ? ProcessScanner.claudeProcesses() : [],
+            let plan = AutoDetect.plan(processes: config.autoDetect ? ProcessScanner.agentProcesses() : [],
                                        holds: holds, enabled: config.autoDetect)
             for pid in plan.drop {
                 try reconciler.remove(pid: pid)
@@ -52,7 +52,8 @@ func reapCommand() -> Int32 {
             }
             for p in plan.adopt {
                 let command = p.argv.isEmpty ? (p.path as NSString).lastPathComponent : p.argv.joined(separator: " ")
-                try reconciler.update(HoldRecord(pid: p.pid, command: command, kind: .claude, startedAt: Date(),
+                let kind = AutoDetect.agentKind(path: p.path, argv: p.argv) ?? .claude
+                try reconciler.update(HoldRecord(pid: p.pid, command: command, kind: kind, startedAt: Date(),
                                                  held: false, reason: .active, adopted: true, cwd: p.cwd))
                 print("\(stamp) adopted [\(p.pid)] \(command) in \(p.cwd ?? "?")")
             }
@@ -69,15 +70,21 @@ func reapCommand() -> Int32 {
     }
 }
 
-/// Adopted sessions have no hooks; their activity is the newest transcript write
+/// Adopted sessions have no hooks; their activity is the newest transcript/session-file write
 /// (never earlier than adoption, so a newly adopted session gets a full idle window).
+func lastAdoptedWrite(_ r: HoldRecord) -> Date? {
+    r.kind == .codex
+        ? AutoDetect.latestCodexWrite(cwd: r.cwd, since: r.startedAt)
+        : r.cwd.flatMap { AutoDetect.latestTranscriptWrite(cwd: $0) }
+}
+
 func evaluateAdopted(reconciler: Reconciler, probe: ProcessProbe, config: Config, stamp: String) throws {
     let store = reconciler.store
     let readings = SystemReadings().read()
     for var r in store.list() where r.adopted && probe.isLive(r) {
-        let lastWrite = r.cwd.flatMap { AutoDetect.latestTranscriptWrite(cwd: $0) } ?? r.startedAt
+        let lastWrite = lastAdoptedWrite(r) ?? r.startedAt
         let decision = decide(DecisionInput(
-            kind: .claude, startedAt: r.startedAt, activity: Activity(state: .idle, at: max(lastWrite, r.startedAt)),
+            kind: r.kind, startedAt: r.startedAt, activity: Activity(state: .idle, at: max(lastWrite, r.startedAt)),
             readings: readings, config: config, now: Date(),
             manuallyReleased: r.reason == .manual && !r.held))
         if let kind = Alerts.kindForTransition(wasHeld: r.held, decision: decision) {
@@ -139,9 +146,10 @@ func statusCommand() -> Int32 {
             : h.effective ? "holding" : "NOT holding (sudo pmset failed, run `lidless setup`)"
         var line = "  [\(h.pid)] \(state)"
         if !alive { line += " — DEAD, will be reaped" }
-        if h.adopted {
-            let last = h.cwd.flatMap { AutoDetect.latestTranscriptWrite(cwd: $0) }
-            line += ", auto-detected, last transcript write " + (last.map { minutes(now.timeIntervalSince($0)) + " ago" } ?? "unknown")
+        if h.adopted || h.kind == .codex {
+            let last = lastAdoptedWrite(h)
+            line += ", \(h.kind.rawValue)\(h.adopted ? " (auto-detected)" : ""), last session write "
+                + (last.map { minutes(now.timeIntervalSince($0)) + " ago" } ?? "none since start")
         } else if h.kind == .claude {
             if let a = store.readActivity(pid: h.pid) {
                 line += ", claude \(a.state.rawValue) for \(minutes(now.timeIntervalSince(a.at)))"

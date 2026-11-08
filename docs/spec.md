@@ -99,6 +99,17 @@ On a transition from held → released for `lowBattery` or `thermal`, send a mac
 
 `thermalLimit` is one of `fair`, `serious`, `critical`. No hard session cap.
 
+## Codex (v2.0.4)
+
+`lidless codex …` and auto-detect support OpenAI's Codex CLI alongside Claude Code (`kind: codex`).
+
+- **Why no hooks:** Codex has Claude-style hooks (`UserPromptSubmit`, `PreToolUse`, `Stop`, …), but every hook must be approved once in Codex before it runs; hooks injected per run (`-c hooks.*` or a fresh `hooks.json`) are silently skipped. lidless won't use `--dangerously-bypass-hook-trust`, since that disables review for all hooks.
+- **Activity:** the newest write to a session file in `$CODEX_HOME/sessions/YYYY/MM/DD/rollout-*.jsonl` since the hold started, preferring sessions whose `session_meta.payload.cwd` matches the hold's cwd. If none match (e.g. `codex -C dir`, or VS Code's app-server running from `/`), the newest write of any session counts, which errs toward staying awake. Resumed sessions append to their original file in an older day folder, so the whole tree is scanned (cheap: one stat per file).
+- **Same timeout and rules** as Claude: `idleTimeoutMinutes`, battery, thermal, alerts.
+- **Detected processes:** binaries launched as `codex` (Homebrew, standalone, the VS Code extension's `app-server`) or node running `@openai/codex`. `codex remote-control start` daemonizes, so it can only be covered by auto-detect; the wrapper warns about it.
+- **Detection uses `argv[0]` when readable:** both agents' native binaries re-execute themselves under other names for helpers (Claude Code runs its bundled `ugrep`; Codex runs `apply_patch`), and those must not be adopted as sessions. Processes whose parent is an agent are skipped as helpers.
+- Possible later: `lidless setup --codex-hooks` to install hooks into `~/.codex/hooks.json` once, which you approve in Codex's hook review, for hook-level precision.
+
 ## Doctor (v2.0.3)
 
 `lidless doctor` gathers facts from the system and evaluates them with a pure, unit-tested function (`Doctor.evaluate`). Each check is ✓ ok, ! warn or ✗ fail, with a `fix:` command.

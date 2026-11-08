@@ -1,12 +1,13 @@
 # lidless
 
-Keep your MacBook awake, **even with the lid closed on battery**, while a job runs. It's built for `claude` Remote Control sessions you drive from your phone.
+Keep your MacBook awake, **even with the lid closed on battery**, while a job runs. It's built for Claude Code Remote Control sessions you drive from your phone, and supports Codex too.
 
 ```sh
 brew install vitkon/tap/lidless   # or: git clone … && make install (→ ~/.local/bin)
 lidless setup                     # once: sudoers rule for pmset + launchd watchdog (asks for your password)
 
 lidless claude --remote-control     # close the lid, keep working from your phone
+lidless codex                       # Codex works too
 lidless --sleep-after npm run build # sleep the Mac when the build finishes
 lidless status
 lidless doctor                      # something off? it tells you the fix
@@ -26,7 +27,7 @@ Config is in `~/.lidless/config.json`. Every key is optional:
 
 ### Sessions you forgot to wrap
 
-Add `"autoDetect": true` to the config and the watchdog also keeps the Mac awake for `claude` sessions started without lidless, including `claude --bg`. Idle time is judged from the session's transcript writes, with the same 30-minute timeout.
+Add `"autoDetect": true` to the config and the watchdog also keeps the Mac awake for Claude Code and Codex sessions started without lidless, including `claude --bg`, `codex remote-control` and Codex in VS Code. Idle time is judged from the session's transcript writes, with the same 30-minute timeout.
 
 ### Phone alerts
 

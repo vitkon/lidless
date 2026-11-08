@@ -50,7 +50,7 @@ public func decide(_ i: DecisionInput) -> Decision {
     if i.readings.thermal >= i.config.thermalLimit {
         return Decision(held: false, reason: .thermal)
     }
-    if i.kind == .claude {
+    if i.kind != .plain {
         let state = i.activity?.state ?? .idle
         let since = i.activity?.at ?? i.startedAt
         if state == .idle, i.now.timeIntervalSince(since) >= i.config.idleTimeoutMinutes * 60 {

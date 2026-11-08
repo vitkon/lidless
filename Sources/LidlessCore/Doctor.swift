@@ -38,6 +38,7 @@ public struct DoctorFacts: Sendable {
     public var unknownConfigKeys: [String]
     public var alertsError: String?
     public var claudeVersion: String?
+    public var codexVersion: String? = nil
     public var readings: Readings
     public var config: Config
 
@@ -165,10 +166,12 @@ public enum Doctor {
                 fix: f.agentLoaded ? nil : agentFix)
         }
 
-        if let v = f.claudeVersion {
-            add("claude", .ok, v)
-        } else {
-            add("claude", .warn, "`claude` not found on PATH (only needed for Claude sessions)")
+        switch (f.claudeVersion, f.codexVersion) {
+        case (nil, nil):
+            add("agents", .warn, "neither `claude` nor `codex` found on PATH (only needed for agent sessions)")
+        default:
+            if let v = f.claudeVersion { add("claude", .ok, v) }
+            if let v = f.codexVersion { add("codex", .ok, v) }
         }
 
         let r = f.readings

@@ -31,6 +31,16 @@ Opt-in `autoDetect: true`: the watchdog adopts `claude` sessions not started thr
 
 Checks sudoers, the watchdog, PATH shadowing, a stale `SleepDisabled`, dead holds, config validity and typos, alert URLs, auto-detect wiring, Claude Code, and battery/thermal state. Each problem prints the exact command that fixes it. Details in [spec.md](spec.md#doctor-v203).
 
+## v2.0.4: Codex support (done)
+
+`lidless codex …` plus auto-detect for Codex processes (CLI, `remote-control` daemon, VS Code extension), judged by Codex session-file writes because Codex requires per-hook approval. Also fixed auto-detect adopting agents' bundled tools (`ugrep`, `apply_patch`). Details in [spec.md](spec.md#codex-v204).
+
+## Next: `lidless setup --codex-hooks`
+
+**Problem.** Session-file activity is less precise than hooks: a long single command with no session writes can be released mid-task.
+
+**Design.** Opt-in setup step that adds lidless's busy/idle hooks to `~/.codex/hooks.json`; you approve them once in Codex's hook review. Hooks map to holds via `LIDLESS_ACTIVITY_FILE` for wrapped runs, and to adopted holds by session cwd otherwise.
+
 ## Later / maybe
 
 - **Menu bar indicator**: a tiny status item showing hold count. This would need an app bundle, so only if the CLI proves insufficient.

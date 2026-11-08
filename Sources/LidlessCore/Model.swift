@@ -13,6 +13,8 @@ public enum HoldKind: String, Codable, Sendable {
     case plain
     /// A `claude` session: idle detection via hooks.
     case claude
+    /// A `codex` session: idle detection via session (rollout) file writes.
+    case codex
 }
 
 public enum ActivityState: String, Codable, Sendable {

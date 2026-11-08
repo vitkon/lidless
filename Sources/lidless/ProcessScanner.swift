@@ -51,8 +51,8 @@ enum ProcessScanner {
         pid > 0 && (kill(pid, 0) == 0 || errno == EPERM)
     }
 
-    /// All processes that look like Claude Code sessions.
-    static func claudeProcesses() -> [ProcInfo] {
+    /// All processes that look like agent sessions (Claude Code, Codex).
+    static func agentProcesses() -> [ProcInfo] {
         let count = proc_listallpids(nil, 0)
         guard count > 0 else { return [] }
         var pids = [pid_t](repeating: 0, count: Int(count) * 2)
@@ -62,9 +62,9 @@ enum ProcessScanner {
             guard let path = path(pid) else { continue }
             let base = (path as NSString).lastPathComponent
             // Cheap prefilter before reading argv for every process on the system.
-            guard path.contains("claude") || base.hasPrefix("node") else { continue }
+            guard path.contains("claude") || base == "codex" || base.hasPrefix("node") else { continue }
             let args = argv(pid)
-            guard AutoDetect.isClaudeProcess(path: path, argv: args) else { continue }
+            guard AutoDetect.agentKind(path: path, argv: args) != nil else { continue }
             out.append(ProcInfo(pid: pid, ppid: ppid(pid) ?? 0, path: path, argv: args, cwd: cwd(pid)))
         }
         return out

@@ -128,10 +128,13 @@ private func check(_ checks: [DoctorCheck], _ name: String) -> DoctorCheck? {
         #expect(c?.fix == "lidless test-alert")
     }
 
-    @Test func missingClaudeWarns() {
+    @Test func missingAgentsWarn() {
         var f = healthy()
         f.claudeVersion = nil
-        #expect(check(Doctor.evaluate(f), "claude")?.status == .warn)
+        #expect(check(Doctor.evaluate(f), "agents")?.status == .warn)
+        f.codexVersion = "codex-cli 0.167.0"
+        #expect(check(Doctor.evaluate(f), "agents") == nil)
+        #expect(check(Doctor.evaluate(f), "codex")?.status == .ok)
     }
 
     @Test func autoDetectWithoutWatchdogFails() throws {

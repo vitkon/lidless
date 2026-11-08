@@ -114,8 +114,10 @@ public enum Alerts {
                 priority: 4, tags: ["fire"])
         case .idle:
             let mins = Int(config.idleTimeoutMinutes)
+            let first = (e.command.split(separator: " ").first.map(String.init) ?? "") as NSString
+            let agent = ["claude": "Claude", "codex": "Codex"][first.lastPathComponent] ?? "Session"
             return AlertMessage(
-                title: "Claude went idle on \(e.host)",
+                title: "\(agent) went idle on \(e.host)",
                 body: "No activity for \(mins) minutes. The session is still running, but the Mac may sleep now. Send a prompt to keep it awake.",
                 priority: 3, tags: ["zzz"])
         case .finished:

@@ -93,7 +93,7 @@ struct SystemProcessProbe: ProcessProbe {
     func isLive(_ hold: HoldRecord) -> Bool {
         guard hold.adopted else { return isLiveLidless(pid: hold.pid) }
         guard ProcessScanner.isAlive(hold.pid), let path = ProcessScanner.path(hold.pid) else { return false }
-        return AutoDetect.isClaudeProcess(path: path, argv: ProcessScanner.argv(hold.pid))
+        return AutoDetect.agentKind(path: path, argv: ProcessScanner.argv(hold.pid)) == hold.kind
     }
 
     func isLiveLidless(pid: Int32) -> Bool {

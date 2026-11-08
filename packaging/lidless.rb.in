@@ -1,5 +1,5 @@
 class Lidless < Formula
-  desc "Keep your MacBook awake with the lid closed while Claude Code or any job runs"
+  desc "Keep your MacBook awake with the lid closed while Claude Code, Codex or any job runs"
   homepage "https://vitkon.github.io/lidless/"
   url "https://github.com/vitkon/lidless/archive/refs/tags/v@VERSION@.tar.gz"
   sha256 "@SHA256@"
