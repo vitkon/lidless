@@ -67,6 +67,7 @@ jobs:
       - name: Point the tap formula at this release
         run: |
           brew tap vitkon/tap
+          brew trust vitkon/tap || true  # Homebrew 7+ refuses to load formulae from untrusted taps
           sed -e "s|@VERSION@|$V|g" -e "s|@SHA256@|$SHA|g" packaging/lidless.rb.in \
             > "$(brew --repository vitkon/tap)/Formula/lidless.rb"
       - name: Build and test bottle
@@ -110,6 +111,7 @@ jobs:
       - name: Update the tap formula with bottles
         run: |
           brew tap vitkon/tap
+          brew trust vitkon/tap || true
           TAP="$(brew --repository vitkon/tap)"
           sed -e "s|@VERSION@|$V|g" -e "s|@SHA256@|$SHA|g" packaging/lidless.rb.in > "$TAP/Formula/lidless.rb"
           brew bottle --merge --write --no-commit bottles/*.bottle.json
