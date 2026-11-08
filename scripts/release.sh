@@ -1,8 +1,10 @@
 #!/bin/sh
-# Release lidless: tag, push, and publish the Homebrew formula to vitkon/homebrew-tap.
-# usage: scripts/release.sh 1.1.0
+# Release lidless.
+#   scripts/release.sh 2.0.1          tag + push; CI builds bottles, creates the release, updates the tap
+#   scripts/release.sh 2.0.1 --local  no CI: publish a source-only formula to the tap from this machine
 set -eu
-VERSION=${1:?usage: scripts/release.sh <version>}
+VERSION=${1:?usage: scripts/release.sh <version> [--local]}
+MODE=${2:-ci}
 REPO=vitkon/lidless
 TAP=vitkon/homebrew-tap
 cd "$(dirname "$0")/.."
@@ -14,10 +16,14 @@ swift test
 git tag -a "v$VERSION" -m "lidless $VERSION"
 git push origin main "v$VERSION"
 
+if [ "$MODE" != "--local" ]; then
+  echo "tag pushed; CI is building bottles: gh run watch -R $REPO"
+  exit 0
+fi
+
 URL="https://github.com/$REPO/archive/refs/tags/v$VERSION.tar.gz"
 SHA=$(curl -fsSL "$URL" | shasum -a 256 | cut -d' ' -f1)
 echo "tarball sha256: $SHA"
-
 WORK=$(mktemp -d)
 gh repo clone "$TAP" "$WORK/tap" -- --depth 1
 mkdir -p "$WORK/tap/Formula"

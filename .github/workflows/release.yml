@@ -1,0 +1,123 @@
+name: release
+
+# Tag push (vX.Y.Z): build bottles, create the GitHub release, update vitkon/homebrew-tap.
+# Manual run: rebuild bottles for an existing tag; publish is opt-in (use publish=false to dry-run).
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Existing version to bottle, e.g. 2.0.1"
+        required: true
+      publish:
+        description: "Create the GitHub release and update the tap"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+env:
+  HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_NO_INSTALL_CLEANUP: 1
+  HOMEBREW_NO_ANALYTICS: 1
+  HOMEBREW_NO_ENV_HINTS: 1
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      sha256: ${{ steps.v.outputs.sha256 }}
+      publish: ${{ steps.v.outputs.publish }}
+    steps:
+      - id: v
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_PUBLISH: ${{ inputs.publish }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            V="${GITHUB_REF_NAME#v}"; P=true
+          else
+            V="$INPUT_VERSION"; P="$INPUT_PUBLISH"
+          fi
+          SHA=$(curl -fsSL "https://github.com/$GITHUB_REPOSITORY/archive/refs/tags/v$V.tar.gz" | shasum -a 256 | cut -d' ' -f1)
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "publish=$P" >> "$GITHUB_OUTPUT"
+          echo "lidless $V, tarball sha256 $SHA, publish=$P"
+
+  bottle:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        # Oldest supported arm64 runner first: Homebrew uses an older-macOS bottle on newer macOS.
+        os: [macos-14, macos-15]
+    runs-on: ${{ matrix.os }}
+    env:
+      V: ${{ needs.version.outputs.version }}
+      SHA: ${{ needs.version.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: Point the tap formula at this release
+        run: |
+          brew tap vitkon/tap
+          sed -e "s|@VERSION@|$V|g" -e "s|@SHA256@|$SHA|g" packaging/lidless.rb.in \
+            > "$(brew --repository vitkon/tap)/Formula/lidless.rb"
+      - name: Build and test bottle
+        run: |
+          brew install --build-bottle vitkon/tap/lidless
+          brew test vitkon/tap/lidless
+          brew bottle --json --root-url="https://github.com/$GITHUB_REPOSITORY/releases/download/v$V" vitkon/tap/lidless
+          for j in *.bottle.json; do
+            mv "$(jq -r '.[].bottle.tags[].local_filename' "$j")" "$(jq -r '.[].bottle.tags[].filename' "$j")"
+          done
+          ls -la *.bottle.*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bottle-${{ matrix.os }}
+          path: "*.bottle.*"
+
+  publish:
+    needs: [version, bottle]
+    if: ${{ !cancelled() && needs.version.outputs.publish == 'true' }}
+    runs-on: macos-latest
+    env:
+      V: ${{ needs.version.outputs.version }}
+      SHA: ${{ needs.version.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: bottles
+          merge-multiple: true
+      - name: Require at least one bottle
+        run: ls bottles/*.bottle.json
+      - name: GitHub release with bottles
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$V" bottles/*.bottle.tar.gz --title "lidless $V" --generate-notes \
+            || gh release upload "v$V" bottles/*.bottle.tar.gz --clobber
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.TAP_DEPLOY_KEY }}
+      - name: Update the tap formula with bottles
+        run: |
+          brew tap vitkon/tap
+          TAP="$(brew --repository vitkon/tap)"
+          sed -e "s|@VERSION@|$V|g" -e "s|@SHA256@|$SHA|g" packaging/lidless.rb.in > "$TAP/Formula/lidless.rb"
+          brew bottle --merge --write --no-commit bottles/*.bottle.json
+          cd "$TAP"
+          git config user.name "lidless release bot"
+          git config user.email "actions@github.com"
+          git remote set-url origin git@github.com:vitkon/homebrew-tap.git
+          git add Formula/lidless.rb
+          git commit -m "lidless $V (bottled)"
+          git push origin HEAD:main
+          cat Formula/lidless.rb
