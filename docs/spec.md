@@ -139,9 +139,9 @@ Install: `make install` → `~/.local/bin/lidless`.
 - lidless owns the `SleepDisabled` flag. If you set `pmset disablesleep 1` by hand, the watchdog will reset it within 60 s whenever no lidless hold exists.
 - Verified 2026-11-08 (Claude Code 2.1.319): `--settings` with injected hooks is accepted, and `PreToolUse` writes `busy` to the activity file during a real session.
 
-## Open question to verify during implementation
+## Resolved: Remote Control prompts
 
-Do prompts sent from the phone through Remote Control fire `UserPromptSubmit` in the local session? If not, a phone prompt after the idle cutoff won't re-acquire the hold (and the Mac may already be asleep). Fallback if needed: treat RC sessions as never idle, or count transcript writes as activity.
+Verified 2026-11-08 on a real device: prompts sent from the phone through Remote Control fire the injected hooks. Both a plain chat prompt and a tool-using prompt flip the activity to `busy` and back to `idle` on `Stop`. No fallback needed. Closed-lid keep-awake on battery was also verified (test 1 in the checklist).
 
 ## Manual test checklist
 

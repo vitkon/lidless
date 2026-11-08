@@ -2,17 +2,18 @@
 
 v1 (shipped 2026-11-08) is described in [spec.md](spec.md). This file tracks what comes next, roughly in priority order. Each item lists the problem it solves, the proposed design, and the open questions to settle before building it.
 
-## v1.1: hardening
-
-Small fixes found while testing v1.
+## v1.1: hardening and Homebrew (done)
 
 | Item | Problem | Fix |
 |---|---|---|
-| Honest status when pmset fails | `lidless status` shows `holding` even if `sudo pmset` was refused. | Store a `effective: Bool` in the hold record; status shows `not holding (run lidless setup)`. |
-| Instant re-acquire | After an idle release, a new prompt waits up to 30 s for the next tick. | The `busy` hook sends `SIGUSR1` to the wrapper pid (from `LIDLESS_ACTIVITY_FILE`'s name), which triggers an immediate tick. |
-| Strict argument parsing | `lidless setup -S` silently ignored `-S`. | Reject unknown flags on subcommands with a usage error. |
-| Watchdog follows installs | The LaunchAgent points at whichever binary ran `setup` (could be `.build/`). | `make install` re-runs `lidless setup --agent-only` when the agent exists. |
-| RC phone prompts | Unverified: do phone prompts fire `UserPromptSubmit`? | If not: treat `--remote-control` sessions as never idle, or watch the session transcript's mtime as a second activity signal. |
+| Honest status when pmset fails | `lidless status` showed `holding` even if `sudo pmset` was refused. | Hold records carry `effective`; status shows `NOT holding (sudo pmset failed…)`. |
+| Instant re-acquire | After an idle release, a new prompt waited up to 30 s for the next tick. | The `busy` hook sends `SIGUSR1` to the wrapper (`LIDLESS_PID`), which re-evaluates immediately. |
+| Strict argument parsing | `lidless setup -S` silently ignored `-S`. | Unknown flags and arguments are usage errors (exit 2). |
+| Watchdog follows installs | The LaunchAgent pointed at whichever binary ran `setup`. | `make install` re-runs `lidless setup --agent-only`; the binary path is no longer symlink-resolved, so Homebrew's stable `/opt/homebrew/bin/lidless` survives upgrades. |
+| Homebrew | Install meant cloning and `make install`. | `brew install vitkon/tap/lidless`. Source-build formula from the tagged tarball, published by `scripts/release.sh <version>`. |
+| `--version` | No way to tell which build is installed. | `lidless --version`. |
+
+Remote Control phone prompts were verified to fire the hooks, so no fallback was needed.
 
 ## v2.0: phone alerts (webhook)
 
@@ -26,16 +27,11 @@ Small fixes found while testing v1.
 
 **Open questions.** Should `exited` (job finished) be on by default? It's the most useful signal for long builds, but noisy for short commands. A minimum run time (e.g. only for jobs longer than 5 min) might settle it.
 
-## v2.1: Homebrew
+## v2.1: Homebrew bottles
 
-**Problem.** Install currently means cloning and `make install`.
+**Problem.** The v1.1 formula builds from source, so users need Xcode or the Command Line Tools and wait for a compile.
 
-**Design.**
-- Tap `vitkon/homebrew-tap`, formula builds from a tagged source tarball with `swift build -c release`.
-- `post_install` caveat tells the user to run `lidless setup` (formulae can't write sudoers).
-- GitHub Action on tag: run tests, build universal binary, update formula sha.
-
-**Open questions.** Source build vs. prebuilt bottle. A source build needs Xcode or the Command Line Tools; a bottle needs CI signing to avoid Gatekeeper prompts.
+**Design.** GitHub Action on tag: run tests, build a universal binary, attach a bottle to the release and add the `bottle do` block to the formula. Submit to homebrew-core once the tool has some users.
 
 ## v2.2: auto-detect sessions
 

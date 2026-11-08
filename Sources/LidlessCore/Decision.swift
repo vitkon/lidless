@@ -31,6 +31,14 @@ public struct Decision: Equatable, Sendable {
     }
 }
 
+/// Should a hook nudge its wrapper (SIGUSR1) to re-evaluate right away instead of waiting
+/// for the next 30 s tick? Only when activity resumes on a hold that isn't currently held,
+/// and not after a manual release (which is permanent for the run).
+public func shouldWakeWrapper(record: HoldRecord?, state: ActivityState) -> Bool {
+    guard state == .busy, let r = record else { return false }
+    return !r.held && r.reason != .manual
+}
+
 /// Should this hold keep the Mac awake right now? Rules apply in order; the first match wins.
 public func decide(_ i: DecisionInput) -> Decision {
     if i.manuallyReleased {

@@ -3,8 +3,8 @@
 Keep your MacBook awake, **even with the lid closed on battery**, while a job runs. It's built for `claude` Remote Control sessions you drive from your phone.
 
 ```sh
-make install        # → ~/.local/bin/lidless
-lidless setup       # once: sudoers rule for pmset + launchd watchdog (asks for your password)
+brew install vitkon/tap/lidless   # or: git clone … && make install (→ ~/.local/bin)
+lidless setup                     # once: sudoers rule for pmset + launchd watchdog (asks for your password)
 
 lidless claude --remote-control     # close the lid, keep working from your phone
 lidless --sleep-after npm run build # sleep the Mac when the build finishes
@@ -26,3 +26,12 @@ Config is in `~/.lidless/config.json`. Every key is optional:
 See [docs/spec.md](docs/spec.md) for the design and [docs/roadmap.md](docs/roadmap.md) for what's next.
 
 Project page: https://vitkon.github.io/lidless/
+
+## Releasing
+
+```sh
+# bump Sources/lidless/Version.swift, commit, then:
+scripts/release.sh 1.1.0   # tests, tags, pushes, publishes Formula/lidless.rb to vitkon/homebrew-tap
+```
+
+MIT licensed.

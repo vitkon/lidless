@@ -25,6 +25,11 @@ func hookCommand(_ state: String) -> Int32 {
     else { return 0 }
     let store = HoldStore(paths: LidlessPaths.standard())
     try? store.writeActivity(Activity(state: s, at: Date()), to: URL(fileURLWithPath: file))
+    if let pidString = ProcessInfo.processInfo.environment["LIDLESS_PID"], let pid = Int32(pidString),
+       shouldWakeWrapper(record: try? store.read(pid: pid), state: s),
+       SystemProcessProbe().isLiveLidless(pid: pid) {
+        kill(pid, SIGUSR1)  // re-acquire now instead of at the next 30 s tick
+    }
     return 0
 }
 
@@ -77,7 +82,9 @@ func statusCommand() -> Int32 {
     let now = Date()
     for h in holds {
         let alive = probe.isLiveLidless(pid: h.pid)
-        var line = "  [\(h.pid)] \(h.held ? "holding" : "released (\(h.reason.rawValue))")"
+        let state = !h.held ? "released (\(h.reason.rawValue))"
+            : h.effective ? "holding" : "NOT holding (sudo pmset failed, run `lidless setup`)"
+        var line = "  [\(h.pid)] \(state)"
         if !alive { line += " — DEAD, will be reaped" }
         if h.kind == .claude {
             if let a = store.readActivity(pid: h.pid) {
@@ -99,8 +106,18 @@ private func minutes(_ t: TimeInterval) -> String {
 
 // MARK: - setup / uninstall
 
-func setupCommand() -> Int32 {
+func setupCommand(agentOnly: Bool = false) -> Int32 {
     let bin = selfExecutablePath()
+    if agentOnly {
+        do {
+            try installAgent(bin: bin)
+            print("✓ watchdog now runs \(bin) reap")
+            return 0
+        } catch {
+            stderrLine("\(error)")
+            return 1
+        }
+    }
     if bin.contains("/.build/") {
         stderrLine("warning: running from \(bin); the watchdog will point here. Prefer `make install` first.")
     }

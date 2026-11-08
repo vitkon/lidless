@@ -1,0 +1,29 @@
+class Lidless < Formula
+  desc "Keep your MacBook awake with the lid closed while Claude Code or any job runs"
+  homepage "https://vitkon.github.io/lidless/"
+  url "https://github.com/vitkon/lidless/archive/refs/tags/v@VERSION@.tar.gz"
+  sha256 "@SHA256@"
+  license "MIT"
+
+  depends_on xcode: ["15.0", :build]
+  depends_on :macos
+
+  def install
+    system "swift", "build", "--disable-sandbox", "-c", "release"
+    bin.install ".build/release/lidless"
+  end
+
+  def caveats
+    <<~EOS
+      Run setup once to allow lidless to toggle sleep (asks for your password):
+        lidless setup
+
+      Then wrap any job, e.g.:
+        lidless claude --remote-control
+    EOS
+  end
+
+  test do
+    assert_match "lidless #{version}", shell_output("#{bin}/lidless --version")
+  end
+end

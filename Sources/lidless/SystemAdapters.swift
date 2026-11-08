@@ -105,14 +105,14 @@ struct OsascriptNotifier: Notifier {
     }
 }
 
-/// Absolute, symlink-resolved path of the running lidless binary.
+/// Absolute path of the running lidless binary, as invoked. Symlinks are deliberately NOT
+/// resolved: with Homebrew, /opt/homebrew/bin/lidless is stable while the Cellar path it
+/// points to changes on every upgrade, which would break the watchdog and hooks.
 func selfExecutablePath() -> String {
     var size: UInt32 = 4096
     var buf = [CChar](repeating: 0, count: Int(size))
-    if _NSGetExecutablePath(&buf, &size) == 0 {
-        return URL(fileURLWithPath: String(cString: buf)).resolvingSymlinksInPath().path
-    }
-    return CommandLine.arguments[0]
+    guard _NSGetExecutablePath(&buf, &size) == 0 else { return CommandLine.arguments[0] }
+    return URL(fileURLWithPath: String(cString: buf)).standardizedFileURL.path
 }
 
 func stderrLine(_ s: String) {

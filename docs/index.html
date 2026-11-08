@@ -356,12 +356,11 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
   <div class="wrap two">
     <div>
       <h2>Install</h2>
-      <p class="muted">Needs macOS 13 or later and Xcode or the Command Line Tools. A Homebrew formula is <a href="https://github.com/vitkon/lidless/blob/main/docs/roadmap.md">on the roadmap</a>.</p>
+      <p class="muted">Needs macOS 13 or later and Xcode or the Command Line Tools. Homebrew builds it from source; you can also clone the repo and run <code>make install</code>.</p>
     </div>
     <ol class="steps">
-      <li>Build and install to <code>~/.local/bin</code>.
-<pre class="term"><span class="p">$ </span>git clone https://github.com/vitkon/lidless
-<span class="p">$ </span>cd lidless && make install</pre></li>
+      <li>Install with Homebrew.
+<pre class="term"><span class="p">$ </span>brew install vitkon/tap/lidless</pre></li>
       <li>Run setup once. It asks for your password to add the sudoers rule and the watchdog.
 <pre class="term"><span class="p">$ </span>lidless setup</pre></li>
       <li>Start a session, close the lid, pick up your phone.
@@ -376,7 +375,7 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
       <h2>Coming next</h2>
     </div>
     <div>
-      <p class="muted">Phone alerts through a webhook or ntfy when the Mac is about to sleep, a Homebrew formula, automatic pickup of Claude sessions started without lidless, and a <code>lidless doctor</code> command. The full list is in the <a href="https://github.com/vitkon/lidless/blob/main/docs/roadmap.md">roadmap</a>.</p>
+      <p class="muted">Phone alerts through a webhook or ntfy when the Mac is about to sleep, prebuilt Homebrew bottles, automatic pickup of Claude sessions started without lidless, and a <code>lidless doctor</code> command. The full list is in the <a href="https://github.com/vitkon/lidless/blob/main/docs/roadmap.md">roadmap</a>.</p>
       <p class="muted">Use the lid-closed mode with the laptop somewhere ventilated. The safety limits help, but a closed MacBook inside a bag still gets hot.</p>
     </div>
   </div>

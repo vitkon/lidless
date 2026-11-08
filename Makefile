@@ -13,7 +13,8 @@ install:
 	swift build -c release
 	install -d $(PREFIX)/bin
 	install -m 0755 .build/release/lidless $(BIN)
-	@echo "installed $(BIN) — run 'lidless setup' once to enable keep-awake"
+	@if [ -f $(HOME)/Library/LaunchAgents/com.lidless.watchdog.plist ]; then $(BIN) setup --agent-only; \
+	else echo "installed $(BIN) — run 'lidless setup' once to enable keep-awake"; fi
 
 uninstall:
 	rm -f $(BIN)

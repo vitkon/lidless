@@ -58,7 +58,8 @@ final class Wrapper {
         installSignalHandlers()
 
         let env = ProcessInfo.processInfo.environment
-            .merging(["LIDLESS_ACTIVITY_FILE": store.activityURL(pid: record.pid).path]) { $1 }
+            .merging(["LIDLESS_ACTIVITY_FILE": store.activityURL(pid: record.pid).path,
+                      "LIDLESS_PID": String(record.pid)]) { $1 }
         do {
             childPid = try spawn(childArgs, env: env)
         } catch {
@@ -97,9 +98,12 @@ final class Wrapper {
         }
         record.held = decision.held
         record.reason = decision.reason
+        record.effective = true
         do {
             try reconciler.update(record)
         } catch {
+            record.effective = false
+            try? store.write(record)
             if !warnedPrivilege {
                 stderrLine("\(error). Running without keep-awake.")
                 warnedPrivilege = true
@@ -138,6 +142,12 @@ final class Wrapper {
             src.resume()
             signalSources.append(src)
         }
+        // A hook saw activity resume after an idle release: re-evaluate now.
+        signal(SIGUSR1, SIG_IGN)
+        let wake = DispatchSource.makeSignalSource(signal: SIGUSR1, queue: .main)
+        wake.setEventHandler { [weak self] in self?.tick() }
+        wake.resume()
+        signalSources.append(wake)
     }
 
     func spawn(_ argv: [String], env: [String: String]) throws -> pid_t {
@@ -148,7 +158,7 @@ final class Wrapper {
         // Child gets default dispositions and an empty mask, not our SIG_IGNs.
         var defaults = sigset_t()
         sigemptyset(&defaults)
-        for s in [SIGINT, SIGQUIT, SIGTERM, SIGHUP] { sigaddset(&defaults, s) }
+        for s in [SIGINT, SIGQUIT, SIGTERM, SIGHUP, SIGUSR1] { sigaddset(&defaults, s) }
         posix_spawnattr_setsigdefault(&attr, &defaults)
         var empty = sigset_t()
         sigemptyset(&empty)

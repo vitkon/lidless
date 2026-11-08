@@ -58,9 +58,11 @@ public struct HoldRecord: Codable, Equatable, Sendable {
     public var startedAt: Date
     public var held: Bool
     public var reason: HoldReason
+    /// False when the hold wants the Mac awake but `sudo pmset` was refused (setup missing).
+    public var effective: Bool
 
     public init(pid: Int32, childPid: Int32? = nil, command: String, kind: HoldKind,
-                startedAt: Date, held: Bool, reason: HoldReason) {
+                startedAt: Date, held: Bool, reason: HoldReason, effective: Bool = true) {
         self.pid = pid
         self.childPid = childPid
         self.command = command
@@ -68,6 +70,19 @@ public struct HoldRecord: Codable, Equatable, Sendable {
         self.startedAt = startedAt
         self.held = held
         self.reason = reason
+        self.effective = effective
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        pid = try c.decode(Int32.self, forKey: .pid)
+        childPid = try c.decodeIfPresent(Int32.self, forKey: .childPid)
+        command = try c.decode(String.self, forKey: .command)
+        kind = try c.decode(HoldKind.self, forKey: .kind)
+        startedAt = try c.decode(Date.self, forKey: .startedAt)
+        held = try c.decode(Bool.self, forKey: .held)
+        reason = try c.decode(HoldReason.self, forKey: .reason)
+        effective = try c.decodeIfPresent(Bool.self, forKey: .effective) ?? true
     }
 }
 
