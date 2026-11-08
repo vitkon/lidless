@@ -120,9 +120,9 @@ func setupCommand() -> Int32 {
             stderrLine("generated sudoers rule failed validation: \(check.stdout)\(check.stderr)")
             return 1
         }
-        print("Installing \(sudoersPath) (sudo will ask for your password)…")
-        let install = try shell("/usr/bin/sudo", ["/usr/bin/install", "-m", "0440", "-o", "root", "-g", "wheel",
-                                                   tmp.path, sudoersPath], captureOutput: false)
+        print("Installing \(sudoersPath) (you'll be asked for your password)…")
+        let install = try runAsAdmin(["/usr/bin/install", "-m", "0440", "-o", "root", "-g", "wheel",
+                                      tmp.path, sudoersPath])
         guard install.status == 0 else {
             stderrLine("failed to install sudoers rule")
             return 1
@@ -138,6 +138,19 @@ func setupCommand() -> Int32 {
         stderrLine("\(error)")
         return 1
     }
+}
+
+/// Run as root: `sudo` when there's a terminal to prompt on, otherwise the macOS admin password dialog.
+func runAsAdmin(_ argv: [String]) throws -> ShellResult {
+    if isatty(STDIN_FILENO) == 1 {
+        return try shell("/usr/bin/sudo", argv, captureOutput: false)
+    }
+    func sq(_ s: String) -> String { "'" + s.replacingOccurrences(of: "'", with: #"'\''"#) + "'" }
+    let command = argv.map(sq).joined(separator: " ")
+    let escaped = command.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+    return try shell("/usr/bin/osascript", [
+        "-e", "do shell script \"\(escaped)\" with administrator privileges with prompt \"lidless needs to install a sudoers rule for pmset.\"",
+    ])
 }
 
 func installAgent(bin: String) throws {
@@ -176,8 +189,8 @@ func uninstallCommand() -> Int32 {
     }
 
     if FileManager.default.fileExists(atPath: sudoersPath) {
-        print("Removing \(sudoersPath) (sudo may ask for your password)…")
-        let r = try? shell("/usr/bin/sudo", ["/bin/rm", "-f", sudoersPath], captureOutput: false)
+        print("Removing \(sudoersPath) (you may be asked for your password)…")
+        let r = try? runAsAdmin(["/bin/rm", "-f", sudoersPath])
         if r?.status == 0 { print("✓ sudoers rule removed") } else { ok = false }
     }
     return ok ? 0 : 1
