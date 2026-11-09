@@ -1,14 +1,14 @@
 import Foundation
 import Testing
-@testable import LidlessCore
+@testable import LidsomniaCore
 
 /// A fully healthy machine; each test breaks one thing.
 private func healthy() -> DoctorFacts {
     DoctorFacts(
         sudoAllowed: true,
-        agentPlistExists: true, agentProgram: "/opt/homebrew/bin/lidless", agentProgramExists: true,
+        agentPlistExists: true, agentProgram: "/opt/homebrew/bin/lidsomnia", agentProgramExists: true,
         agentLoaded: true, agentLastExit: 0,
-        runningBinary: "/opt/homebrew/bin/lidless", pathBinaries: ["/opt/homebrew/bin/lidless"],
+        runningBinary: "/opt/homebrew/bin/lidsomnia", pathBinaries: ["/opt/homebrew/bin/lidsomnia"],
         sleepDisabled: false, liveHeldHolds: 0, deadHolds: 0,
         configExists: true, configError: nil, unknownConfigKeys: [], alertsError: nil,
         claudeVersion: "2.1.319 (Claude Code)",
@@ -32,7 +32,7 @@ private func check(_ checks: [DoctorCheck], _ name: String) -> DoctorCheck? {
         f.sudoAllowed = false
         let c = check(Doctor.evaluate(f), "sudoers")
         #expect(c?.status == .fail)
-        #expect(c?.fix == "lidless setup")
+        #expect(c?.fix == "lidsomnia setup")
         #expect(Doctor.exitCode(Doctor.evaluate(f)) == 1)
     }
 
@@ -42,22 +42,22 @@ private func check(_ checks: [DoctorCheck], _ name: String) -> DoctorCheck? {
         f.agentLoaded = false
         let c = check(Doctor.evaluate(f), "watchdog")
         #expect(c?.status == .fail)
-        #expect(c?.fix == "lidless setup --agent-only")
+        #expect(c?.fix == "lidsomnia setup --agent-only")
     }
 
     @Test func watchdogPointingAtMissingBinaryFails() {
         var f = healthy()
-        f.agentProgram = "/Users/me/.local/bin/lidless"
+        f.agentProgram = "/Users/me/.local/bin/lidsomnia"
         f.agentProgramExists = false
         #expect(check(Doctor.evaluate(f), "watchdog")?.status == .fail)
     }
 
     @Test func watchdogPointingElsewhereWarns() {
         var f = healthy()
-        f.agentProgram = "/Users/me/.local/bin/lidless"
+        f.agentProgram = "/Users/me/.local/bin/lidsomnia"
         let c = check(Doctor.evaluate(f), "watchdog")
         #expect(c?.status == .warn)
-        #expect(c?.fix == "lidless setup --agent-only")
+        #expect(c?.fix == "lidsomnia setup --agent-only")
     }
 
     @Test func watchdogNotLoadedOrFailingWarns() {
@@ -71,10 +71,10 @@ private func check(_ checks: [DoctorCheck], _ name: String) -> DoctorCheck? {
 
     @Test func shadowedBinaryWarns() {
         var f = healthy()
-        f.pathBinaries = ["/Users/me/.local/bin/lidless", "/opt/homebrew/bin/lidless"]
+        f.pathBinaries = ["/Users/me/.local/bin/lidsomnia", "/opt/homebrew/bin/lidsomnia"]
         let c = check(Doctor.evaluate(f), "binary")
         #expect(c?.status == .warn)
-        #expect(c?.detail.contains("/Users/me/.local/bin/lidless") == true)
+        #expect(c?.detail.contains("/Users/me/.local/bin/lidsomnia") == true)
     }
 
     @Test func staleSleepFlagFailsWithReleaseFix() {
@@ -82,7 +82,7 @@ private func check(_ checks: [DoctorCheck], _ name: String) -> DoctorCheck? {
         f.sleepDisabled = true
         let c = check(Doctor.evaluate(f), "sleep flag")
         #expect(c?.status == .fail)
-        #expect(c?.fix == "lidless release")
+        #expect(c?.fix == "lidsomnia release")
     }
 
     @Test func heldFlagWithLiveHoldIsFine() {
@@ -97,7 +97,7 @@ private func check(_ checks: [DoctorCheck], _ name: String) -> DoctorCheck? {
         f.deadHolds = 2
         let c = check(Doctor.evaluate(f), "holds")
         #expect(c?.status == .warn)
-        #expect(c?.fix == "lidless reap")
+        #expect(c?.fix == "lidsomnia reap")
     }
 
     @Test func badConfigFails() {
@@ -125,7 +125,7 @@ private func check(_ checks: [DoctorCheck], _ name: String) -> DoctorCheck? {
         f.config = try Config.decode(Data(#"{"alerts":{"ntfyTopic":"t"}}"#.utf8))
         let c = check(Doctor.evaluate(f), "alerts")
         #expect(c?.status == .ok)
-        #expect(c?.fix == "lidless test-alert")
+        #expect(c?.fix == "lidsomnia test-alert")
     }
 
     @Test func missingAgentsWarn() {

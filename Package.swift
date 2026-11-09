@@ -2,15 +2,15 @@
 import PackageDescription
 
 let package = Package(
-    name: "lidless",
+    name: "lidsomnia",
     platforms: [.macOS(.v13)],
     products: [
-        .executable(name: "lidless", targets: ["lidless"]),
+        .executable(name: "lidsomnia", targets: ["lidsomnia"]),
     ],
     targets: [
-        .target(name: "LidlessCore"),
-        .executableTarget(name: "lidless", dependencies: ["LidlessCore"]),
-        .testTarget(name: "LidlessCoreTests", dependencies: ["LidlessCore"]),
+        .target(name: "LidsomniaCore"),
+        .executableTarget(name: "lidsomnia", dependencies: ["LidsomniaCore"]),
+        .testTarget(name: "LidsomniaCoreTests", dependencies: ["LidsomniaCore"]),
     ],
     swiftLanguageModes: [.v5]
 )

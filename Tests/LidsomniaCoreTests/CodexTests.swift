@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import LidlessCore
+@testable import LidsomniaCore
 
 private let t0 = Date(timeIntervalSince1970: 1_000_000)
 
@@ -33,7 +33,7 @@ private struct Sessions {
     @Test func claudeStillDetectedAndOthersNot() {
         #expect(AutoDetect.agentKind(path: "/Users/me/.local/share/claude/versions/2.1.319", argv: ["claude"]) == .claude)
         #expect(AutoDetect.agentKind(path: "/usr/bin/codesign", argv: ["codesign"]) == nil)
-        #expect(AutoDetect.agentKind(path: "/opt/homebrew/bin/lidless", argv: ["lidless", "codex"]) == nil)
+        #expect(AutoDetect.agentKind(path: "/opt/homebrew/bin/lidsomnia", argv: ["lidsomnia", "codex"]) == nil)
     }
 
     @Test func bundledToolsRunFromAgentBinariesAreNotSessions() {

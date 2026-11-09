@@ -81,9 +81,9 @@ public struct Reconciler {
 
     private func withLock<T>(_ body: () throws -> T) throws -> T {
         let fd = open(lockURL.path, O_CREAT | O_RDWR, 0o644)
-        guard fd >= 0 else { throw LidlessError.command("can't open lock \(lockURL.path): \(String(cString: strerror(errno)))") }
+        guard fd >= 0 else { throw LidsomniaError.command("can't open lock \(lockURL.path): \(String(cString: strerror(errno)))") }
         defer { close(fd) }
-        guard flock(fd, LOCK_EX) == 0 else { throw LidlessError.command("can't lock \(lockURL.path)") }
+        guard flock(fd, LOCK_EX) == 0 else { throw LidsomniaError.command("can't lock \(lockURL.path)") }
         defer { flock(fd, LOCK_UN) }
         return try body()
     }

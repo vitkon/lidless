@@ -22,7 +22,7 @@ public struct AdoptionPlan: Equatable, Sendable {
     public var drop: [Int32]
 }
 
-/// Picks up agent sessions (Claude Code, Codex) that weren't started through `lidless`
+/// Picks up agent sessions (Claude Code, Codex) that weren't started through `lidsomnia`
 /// (opt-in via `autoDetect`).
 public enum AutoDetect {
     /// Which agent a process is, if any.
@@ -32,7 +32,7 @@ public enum AutoDetect {
         return nil
     }
 
-    /// Kind for `lidless <cmd>`, from the command name.
+    /// Kind for `lidsomnia <cmd>`, from the command name.
     public static func wrapperKind(_ executable: String) -> HoldKind {
         switch (executable as NSString).lastPathComponent {
         case "claude": return .claude
@@ -100,7 +100,7 @@ public enum AutoDetect {
     /// tools by re-executing itself as e.g. `ugrep`, so when argv is readable, `argv[0]` decides.
     public static func isClaudeProcess(path: String, argv: [String]) -> Bool {
         let base = (path as NSString).lastPathComponent
-        if base == "lidless" { return false }
+        if base == "lidsomnia" { return false }
         if base.hasPrefix("node") { return argv.contains(where: { $0.contains("@anthropic-ai/claude-code/") }) }
         guard let arg0 = argv.first else { return base == "claude" || path.contains("/claude/versions/") }
         return (arg0 as NSString).lastPathComponent == "claude"

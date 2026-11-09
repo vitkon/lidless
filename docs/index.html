@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>lidless</title>
+<title>lidsomnia</title>
 <meta name="description" content="A macOS command-line tool that keeps your MacBook awake with the lid closed while Claude Code, or any long job, is running.">
-<meta property="og:title" content="lidless">
+<meta property="og:title" content="lidsomnia">
 <meta property="og:description" content="Shut the lid. The work keeps going. Keep a MacBook awake with the lid closed while Claude Code runs.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -234,11 +234,11 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
 <body>
 
 <header class="wrap bar">
-  <a class="wordmark" href="#" aria-label="lidless home">lidless<span aria-hidden="true"></span></a>
+  <a class="wordmark" href="#" aria-label="lidsomnia home">lidsomnia<span aria-hidden="true"></span></a>
   <nav>
     <a href="#how" class="hide-sm">How it works</a>
     <a href="#install">Install</a>
-    <a href="https://github.com/vitkon/lidless">GitHub</a>
+    <a href="https://github.com/vitkon/lidsomnia">GitHub</a>
   </nav>
 </header>
 
@@ -246,12 +246,12 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
 <div class="wrap hero">
   <div>
     <h1>Shut the lid.<span class="line2">The work keeps going.</span></h1>
-    <p class="lede">lidless keeps your MacBook awake with the lid closed, on battery, for as long as <strong>Claude Code</strong>, <strong>Codex</strong> or any other job is running. Start a Remote Control session, close the laptop, and carry on from your phone.</p>
-    <div class="install" role="group" aria-label="Install lidless with Homebrew">
-      <span><span class="prompt">$ </span>brew install vitkon/tap/lidless</span>
-      <button type="button" data-copy="brew install vitkon/tap/lidless">Copy</button>
+    <p class="lede">lidsomnia keeps your MacBook awake with the lid closed, on battery, for as long as <strong>Claude Code</strong>, <strong>Codex</strong> or any other job is running. Start a Remote Control session, close the laptop, and carry on from your phone.</p>
+    <div class="install" role="group" aria-label="Install lidsomnia with Homebrew">
+      <span><span class="prompt">$ </span>brew install vitkon/tap/lidsomnia</span>
+      <button type="button" data-copy="brew install vitkon/tap/lidsomnia">Copy</button>
     </div>
-    <p class="sub">Then run <code>lidless setup</code> once. macOS command-line tool, free and open source.</p>
+    <p class="sub">Then run <code>lidsomnia setup</code> once. macOS command-line tool, free and open source.</p>
   </div>
 
   <div class="stage">
@@ -287,7 +287,7 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
       </g>
       <circle cx="432" cy="330" r="3.5" fill="#6F767E"/>
     </svg>
-<pre class="status" aria-label="Example output of lidless status"><span class="k">$ lidless status</span>
+<pre class="status" aria-label="Example output of lidsomnia status"><span class="k">$ lidsomnia status</span>
 <span class="k">SleepDisabled</span>  <span class="on">1 (Mac stays awake)</span>
 <span class="k">power</span>          battery, 64%, thermal nominal
 <span class="k">holds</span>
@@ -300,26 +300,26 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
   <div class="wrap two">
     <div>
       <h2>Wrap the command. That's the whole interface.</h2>
-      <p class="muted">Put <code>lidless</code> in front of anything. While it runs, the Mac won't sleep, even with the lid shut. When it ends, sleep comes back on its own.</p>
-      <p class="muted">Forgot to wrap a session? Set <code>"autoDetect": true</code> in the config and lidless picks up running Claude Code and Codex sessions by itself, including Codex in VS Code.</p>
+      <p class="muted">Put <code>lidsomnia</code> in front of anything. While it runs, the Mac won't sleep, even with the lid shut. When it ends, sleep comes back on its own.</p>
+      <p class="muted">Forgot to wrap a session? Set <code>"autoDetect": true</code> in the config and lidsomnia picks up running Claude Code and Codex sessions by itself, including Codex in VS Code.</p>
     </div>
     <pre class="term"><span class="c"># a Remote Control session you'll drive from your phone</span>
-<span class="p">$ </span>lidless claude --remote-control
+<span class="p">$ </span>lidsomnia claude --remote-control
 
 <span class="c"># Codex works the same way</span>
-<span class="p">$ </span>lidless codex
+<span class="p">$ </span>lidsomnia codex
 
 <span class="c"># a long build, then put the Mac to sleep when it's done</span>
-<span class="p">$ </span>lidless --sleep-after npm run build
+<span class="p">$ </span>lidsomnia --sleep-after npm run build
 
 <span class="c"># see what's keeping the Mac awake</span>
-<span class="p">$ </span>lidless status
+<span class="p">$ </span>lidsomnia status
 
 <span class="c"># something not working? get the exact fix</span>
-<span class="p">$ </span>lidless doctor
+<span class="p">$ </span>lidsomnia doctor
 
 <span class="c"># let it sleep right now</span>
-<span class="p">$ </span>lidless release</pre>
+<span class="p">$ </span>lidsomnia release</pre>
   </div>
 </section>
 
@@ -327,13 +327,13 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
   <div class="wrap two">
     <div>
       <h2>Knows when your agent has gone quiet</h2>
-      <p class="muted">For <code>claude</code> sessions, lidless listens to Claude Code's own hooks, so it can tell a session that's working from one that's waiting. Your global settings are never touched; the hooks exist only for that run. For Codex, it watches the session's history file instead.</p>
+      <p class="muted">For <code>claude</code> sessions, lidsomnia listens to Claude Code's own hooks, so it can tell a session that's working from one that's waiting. Your global settings are never touched; the hooks exist only for that run. For Codex, it watches the session's history file instead.</p>
       <p class="muted">Every 30 seconds it checks these rules in order. The first one that matches decides.</p>
     </div>
     <ol class="order">
-      <li><b>You pressed release</b><span>Running <code>lidless release</code> lets the Mac sleep for the rest of that run.</span></li>
+      <li><b>You pressed release</b><span>Running <code>lidsomnia release</code> lets the Mac sleep for the rest of that run.</span></li>
       <li><b>Battery is nearly empty</b><span>On battery at 10% or less, the Mac is allowed to sleep, so it can resume later instead of shutting down.</span></li>
-      <li><b>The chip is running hot</b><span>If macOS reports serious thermal pressure, lidless lets go until things cool down.</span></li>
+      <li><b>The chip is running hot</b><span>If macOS reports serious thermal pressure, lidsomnia lets go until things cool down.</span></li>
       <li><b>The agent has been idle for 30 minutes</b><span>The session keeps running. Send a new prompt and the Mac is held awake again.</span></li>
       <li><b>Otherwise, stay awake</b><span>The job is active, so the Mac stays on.</span></li>
     </ol>
@@ -344,11 +344,11 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
   <div class="wrap two">
     <div>
       <h2>Built so it can't strand your Mac awake</h2>
-      <p class="muted">Keeping a closed laptop awake changes a system-wide setting. lidless treats putting it back as its most important job.</p>
+      <p class="muted">Keeping a closed laptop awake changes a system-wide setting. lidsomnia treats putting it back as its most important job.</p>
     </div>
     <dl class="guards">
       <dt>Crash recovery</dt>
-      <dd>A small background watchdog checks every minute. If a lidless process dies without cleaning up, sleep is switched back on.</dd>
+      <dd>A small background watchdog checks every minute. If a lidsomnia process dies without cleaning up, sleep is switched back on.</dd>
       <dt>Several jobs at once</dt>
       <dd>Each job gets its own hold. The Mac can sleep again only after the last one finishes.</dd>
       <dt>Narrow permissions</dt>
@@ -356,7 +356,7 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
       <dt>Phone alerts</dt>
       <dd>Get a push notification through <a href="https://ntfy.sh">ntfy</a> or any webhook when the battery runs low, the Mac gets hot, an agent goes idle, or a long job finishes. Alerts go out before the Mac is allowed to sleep.</dd>
       <dt>Your limits</dt>
-      <dd>Idle timeout, battery floor and heat limit live in <code>~/.lidless/config.json</code>.</dd>
+      <dd>Idle timeout, battery floor and heat limit live in <code>~/.lidsomnia/config.json</code>.</dd>
     </dl>
   </div>
 </section>
@@ -366,18 +366,18 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
     <div>
       <h2>Install</h2>
       <p class="muted">Needs macOS 13 or later and Xcode or the Command Line Tools. Homebrew builds it from source; you can also clone the repo and run <code>make install</code>.</p>
-      <p class="muted">Update later with <code>brew upgrade lidless</code>.</p>
+      <p class="muted">Update later with <code>brew upgrade lidsomnia</code>.</p>
     </div>
     <ol class="steps">
       <li>Install with Homebrew.
-<pre class="term"><span class="p">$ </span>brew install vitkon/tap/lidless</pre></li>
+<pre class="term"><span class="p">$ </span>brew install vitkon/tap/lidsomnia</pre></li>
       <li>Run setup once. It asks for your password to add the sudoers rule and the watchdog.
-<pre class="term"><span class="p">$ </span>lidless setup</pre></li>
-      <li>Optional: get alerts on your phone. Install the ntfy app, subscribe to a long random topic, and add it to <code>~/.lidless/config.json</code>.
-<pre class="term"><span class="p">$ </span>echo '{"alerts": {"ntfyTopic": "your-random-topic"}}' &gt; ~/.lidless/config.json
-<span class="p">$ </span>lidless test-alert</pre></li>
+<pre class="term"><span class="p">$ </span>lidsomnia setup</pre></li>
+      <li>Optional: get alerts on your phone. Install the ntfy app, subscribe to a long random topic, and add it to <code>~/.lidsomnia/config.json</code>.
+<pre class="term"><span class="p">$ </span>echo '{"alerts": {"ntfyTopic": "your-random-topic"}}' &gt; ~/.lidsomnia/config.json
+<span class="p">$ </span>lidsomnia test-alert</pre></li>
       <li>Start a session, close the lid, pick up your phone.
-<pre class="term"><span class="p">$ </span>lidless claude --remote-control</pre></li>
+<pre class="term"><span class="p">$ </span>lidsomnia claude --remote-control</pre></li>
     </ol>
   </div>
 </section>
@@ -388,7 +388,7 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
       <h2>Coming next</h2>
     </div>
     <div>
-      <p class="muted">Schedule windows, so the Mac is only held awake during hours you choose, and run reports sent to your phone when a job finishes. The full list is in the <a href="https://github.com/vitkon/lidless/blob/main/docs/roadmap.md">roadmap</a>.</p>
+      <p class="muted">Schedule windows, so the Mac is only held awake during hours you choose, and run reports sent to your phone when a job finishes. The full list is in the <a href="https://github.com/vitkon/lidsomnia/blob/main/docs/roadmap.md">roadmap</a>.</p>
       <p class="muted">Use the lid-closed mode with the laptop somewhere ventilated. The safety limits help, but a closed MacBook inside a bag still gets hot.</p>
     </div>
   </div>
@@ -397,8 +397,8 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
 
 <footer>
   <div class="wrap">
-    <span>Built with ❤️ by <a href="https://github.com/vitkon">vitkon</a></span>
-    <a href="https://github.com/vitkon/lidless">Source on GitHub</a>
+    <span>Built with ❤️ by <a href="https://github.com/vitkon">vitkon</a>. Formerly lidless.</span>
+    <a href="https://github.com/vitkon/lidsomnia">Source on GitHub</a>
   </div>
 </footer>
 

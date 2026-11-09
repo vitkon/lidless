@@ -1,12 +1,12 @@
 import Darwin
 import Foundation
-import LidlessCore
+import LidsomniaCore
 
-/// `lidless [--sleep-after] <cmd> [args…]`
+/// `lidsomnia [--sleep-after] <cmd> [args…]`
 final class Wrapper {
     static let tickInterval: TimeInterval = 30
 
-    let paths: LidlessPaths
+    let paths: LidsomniaPaths
     let store: HoldStore
     let reconciler: Reconciler
     let power: PowerControl
@@ -24,7 +24,7 @@ final class Wrapper {
     var signalSources: [DispatchSourceSignal] = []
 
     init(argv: [String], sleepAfter: Bool) {
-        paths = LidlessPaths.standard()
+        paths = LidsomniaPaths.standard()
         store = HoldStore(paths: paths)
         power = PmsetPowerControl()
         readings = SystemReadings()
@@ -45,11 +45,11 @@ final class Wrapper {
         var childArgs = argv
         if record.kind == .claude {
             if argv.contains("--bg") {
-                stderrLine("warning: `claude --bg` detaches immediately, so lidless can't keep it awake")
+                stderrLine("warning: `claude --bg` detaches immediately, so lidsomnia can't keep it awake")
             }
             do {
                 childArgs = [argv[0]] + (try ClaudeInjection.inject(args: Array(argv.dropFirst()),
-                                                                   lidlessPath: selfExecutablePath()))
+                                                                   lidsomniaPath: selfExecutablePath()))
             } catch {
                 stderrLine("\(error) — running without idle detection")
                 record.kind = .plain
@@ -57,15 +57,15 @@ final class Wrapper {
         }
 
         if record.kind == .codex, argv.contains("remote-control") || argv.contains("app") {
-            stderrLine("warning: this codex command starts a background process and exits, so lidless can't hold it. "
-                       + "Set \"autoDetect\": true in ~/.lidless/config.json to keep the Mac awake for it instead.")
+            stderrLine("warning: this codex command starts a background process and exits, so lidsomnia can't hold it. "
+                       + "Set \"autoDetect\": true in ~/.lidsomnia/config.json to keep the Mac awake for it instead.")
         }
 
         installSignalHandlers()
 
         let env = ProcessInfo.processInfo.environment
-            .merging(["LIDLESS_ACTIVITY_FILE": store.activityURL(pid: record.pid).path,
-                      "LIDLESS_PID": String(record.pid)]) { $1 }
+            .merging(["LIDSOMNIA_ACTIVITY_FILE": store.activityURL(pid: record.pid).path,
+                      "LIDSOMNIA_PID": String(record.pid)]) { $1 }
         do {
             childPid = try spawn(childArgs, env: env)
         } catch {
@@ -92,7 +92,7 @@ final class Wrapper {
 
     func tick() {
         if wroteOnce && !store.exists(pid: record.pid) {
-            manuallyReleased = true  // `lidless release` removed our hold
+            manuallyReleased = true  // `lidsomnia release` removed our hold
         }
         let current = readings.read()
         let decision = decide(DecisionInput(
@@ -156,11 +156,11 @@ final class Wrapper {
     }
 
     func sendAlert(_ kind: AlertKind, readings r: Readings, exitCode: Int32?) {
-        lidless.sendAlert(kind, record: record, readings: r, exitCode: exitCode, config: config)
+        lidsomnia.sendAlert(kind, record: record, readings: r, exitCode: exitCode, config: config)
     }
 
     /// The terminal delivers SIGINT to the whole foreground process group, so the child already
-    /// gets it; lidless just ignores it. SIGTERM/SIGHUP are forwarded explicitly.
+    /// gets it; lidsomnia just ignores it. SIGTERM/SIGHUP are forwarded explicitly.
     func installSignalHandlers() {
         signal(SIGINT, SIG_IGN)
         signal(SIGQUIT, SIG_IGN)
@@ -204,7 +204,7 @@ final class Wrapper {
         }
         var pid: pid_t = 0
         let rc = posix_spawnp(&pid, argv[0], nil, &attr, cArgs, cEnv)
-        guard rc == 0 else { throw LidlessError.command(String(cString: strerror(rc))) }
+        guard rc == 0 else { throw LidsomniaError.command(String(cString: strerror(rc))) }
         return pid
     }
 }

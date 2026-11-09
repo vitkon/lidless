@@ -1,16 +1,16 @@
 import Foundation
 
-public struct LidlessPaths: Sendable {
+public struct LidsomniaPaths: Sendable {
     public let home: URL
 
     public init(home: URL) { self.home = home }
 
-    /// `$LIDLESS_HOME` or `~/.lidless`.
-    public static func standard() -> LidlessPaths {
-        if let override = ProcessInfo.processInfo.environment["LIDLESS_HOME"], !override.isEmpty {
-            return LidlessPaths(home: URL(fileURLWithPath: override))
+    /// `$LIDSOMNIA_HOME` or `~/.lidsomnia`.
+    public static func standard() -> LidsomniaPaths {
+        if let override = ProcessInfo.processInfo.environment["LIDSOMNIA_HOME"], !override.isEmpty {
+            return LidsomniaPaths(home: URL(fileURLWithPath: override))
         }
-        return LidlessPaths(home: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".lidless"))
+        return LidsomniaPaths(home: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".lidsomnia"))
     }
 
     public var holds: URL { home.appendingPathComponent("holds") }
@@ -23,11 +23,11 @@ public struct LidlessPaths: Sendable {
     }
 }
 
-/// Hold files in `~/.lidless/holds/`: `<pid>.json` (wrapper-owned) and `<pid>.activity` (hook-owned).
+/// Hold files in `~/.lidsomnia/holds/`: `<pid>.json` (wrapper-owned) and `<pid>.activity` (hook-owned).
 public struct HoldStore: Sendable {
-    public let paths: LidlessPaths
+    public let paths: LidsomniaPaths
 
-    public init(paths: LidlessPaths) { self.paths = paths }
+    public init(paths: LidsomniaPaths) { self.paths = paths }
 
     static let encoder: JSONEncoder = {
         let e = JSONEncoder()

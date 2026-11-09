@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import LidlessCore
+@testable import LidsomniaCore
 
 private func event(_ kind: AlertKind, exitCode: Int32? = nil, duration: Int = 4320, battery: Int? = 9) -> AlertEvent {
     AlertEvent(kind: kind, host: "Test Mac", command: "claude --remote-control", pid: 42, exitCode: exitCode,
@@ -129,6 +129,6 @@ private func config(_ alerts: String) throws -> Config {
 
     @Test func badWebhookURLThrows() throws {
         let c = try config(#"{"webhookURL": "not a url"}"#)
-        #expect(throws: LidlessError.self) { try Alerts.requests(for: event(.idle), config: c) }
+        #expect(throws: LidsomniaError.self) { try Alerts.requests(for: event(.idle), config: c) }
     }
 }

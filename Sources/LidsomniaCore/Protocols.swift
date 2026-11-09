@@ -1,13 +1,13 @@
 import Foundation
 
-public enum LidlessError: Error, CustomStringConvertible {
+public enum LidsomniaError: Error, CustomStringConvertible {
     /// `sudo -n pmset …` failed — usually the sudoers rule isn't installed.
     case privilege(String)
     case command(String)
 
     public var description: String {
         switch self {
-        case .privilege(let msg): return "can't change sleep settings (\(msg)); run `lidless setup`"
+        case .privilege(let msg): return "can't change sleep settings (\(msg)); run `lidsomnia setup`"
         case .command(let msg): return msg
         }
     }
@@ -25,7 +25,7 @@ public protocol PowerReadingsSource {
 }
 
 public protocol ProcessProbe {
-    /// True if the hold's owner is still running: the lidless wrapper, or for an adopted hold the
+    /// True if the hold's owner is still running: the lidsomnia wrapper, or for an adopted hold the
     /// claude process itself (the name check guards against pid reuse).
     func isLive(_ hold: HoldRecord) -> Bool
 }

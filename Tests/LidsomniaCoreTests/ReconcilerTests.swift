@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import LidlessCore
+@testable import LidsomniaCore
 
 final class FakePower: PowerControl, @unchecked Sendable {
     var disabled = false
@@ -10,7 +10,7 @@ final class FakePower: PowerControl, @unchecked Sendable {
 
     func sleepDisabled() throws -> Bool { disabled }
     func setSleepDisabled(_ on: Bool) throws {
-        if failSet { throw LidlessError.privilege("no sudoers rule") }
+        if failSet { throw LidsomniaError.privilege("no sudoers rule") }
         setCalls.append(on)
         disabled = on
     }
@@ -22,9 +22,9 @@ final class FakeProbe: ProcessProbe, @unchecked Sendable {
     func isLive(_ hold: HoldRecord) -> Bool { alive.contains(hold.pid) }
 }
 
-private func tempHome() -> LidlessPaths {
-    let dir = FileManager.default.temporaryDirectory.appendingPathComponent("lidless-test-\(UUID().uuidString)")
-    let paths = LidlessPaths(home: dir)
+private func tempHome() -> LidsomniaPaths {
+    let dir = FileManager.default.temporaryDirectory.appendingPathComponent("lidsomnia-test-\(UUID().uuidString)")
+    let paths = LidsomniaPaths(home: dir)
     try! paths.ensure()
     return paths
 }
@@ -138,7 +138,7 @@ private func record(_ pid: Int32, held: Bool) -> HoldRecord {
         let (rec, store, power, probe) = make()
         probe.alive = [10]
         power.failSet = true
-        #expect(throws: LidlessError.self) { try rec.update(record(10, held: true)) }
+        #expect(throws: LidsomniaError.self) { try rec.update(record(10, held: true)) }
         #expect(try store.read(pid: 10) != nil)
     }
 }

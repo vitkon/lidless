@@ -20,7 +20,7 @@ public struct DoctorCheck: Equatable, Sendable {
     public var fix: String?
 }
 
-/// Everything `lidless doctor` looks at, gathered by the executable.
+/// Everything `lidsomnia doctor` looks at, gathered by the executable.
 public struct DoctorFacts: Sendable {
     public var sudoAllowed: Bool
     public var agentPlistExists: Bool
@@ -74,7 +74,7 @@ public enum Doctor {
     static let alertKeys: Set<String> = ["ntfyTopic", "ntfyServer", "ntfyToken", "webhookURL", "events",
                                          "finishedMinMinutes"]
 
-    /// Keys lidless doesn't know (usually typos), as `key` or `alerts.key`, sorted.
+    /// Keys lidsomnia doesn't know (usually typos), as `key` or `alerts.key`, sorted.
     public static func unknownKeys(in data: Data) -> [String] {
         guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [] }
         var out = obj.keys.filter { !configKeys.contains($0) }
@@ -96,13 +96,13 @@ public enum Doctor {
 
         add("sudoers", f.sudoAllowed ? .ok : .fail,
             f.sudoAllowed ? "pmset can be toggled without a password"
-                          : "the sudoers rule is missing or doesn't match your user, so lidless can't keep the Mac awake",
-            fix: f.sudoAllowed ? nil : "lidless setup")
+                          : "the sudoers rule is missing or doesn't match your user, so lidsomnia can't keep the Mac awake",
+            fix: f.sudoAllowed ? nil : "lidsomnia setup")
 
         // Watchdog
-        let agentFix = "lidless setup --agent-only"
+        let agentFix = "lidsomnia setup --agent-only"
         if !f.agentPlistExists {
-            add("watchdog", .fail, "not installed: nothing resets sleep if lidless is killed", fix: agentFix)
+            add("watchdog", .fail, "not installed: nothing resets sleep if lidsomnia is killed", fix: agentFix)
         } else if !f.agentProgramExists {
             add("watchdog", .fail, "points at \(f.agentProgram ?? "?"), which no longer exists", fix: agentFix)
         } else if !f.agentLoaded {
@@ -110,14 +110,14 @@ public enum Doctor {
         } else if let program = f.agentProgram, program != f.runningBinary {
             add("watchdog", .warn, "runs \(program), but you're running \(f.runningBinary)", fix: agentFix)
         } else if let code = f.agentLastExit, code != 0 {
-            add("watchdog", .warn, "last run exited with code \(code); see ~/.lidless/watchdog.log", fix: agentFix)
+            add("watchdog", .warn, "last run exited with code \(code); see ~/.lidsomnia/watchdog.log", fix: agentFix)
         } else {
             add("watchdog", .ok, "loaded, runs every 60 s")
         }
 
         let distinct = f.pathBinaries.reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
         if distinct.count > 1 {
-            add("binary", .warn, "several lidless binaries on PATH; \(distinct[0]) wins: \(distinct.joined(separator: ", "))",
+            add("binary", .warn, "several lidsomnia binaries on PATH; \(distinct[0]) wins: \(distinct.joined(separator: ", "))",
                 fix: "rm \(distinct.filter { $0 != f.runningBinary }.first ?? distinct[0])")
         } else {
             add("binary", .ok, f.runningBinary)
@@ -128,7 +128,7 @@ public enum Doctor {
             add("sleep flag", .warn, "couldn't read SleepDisabled from pmset")
         case (true?, 0):
             add("sleep flag", .fail, "SleepDisabled is 1 but nothing is holding it: the Mac will never sleep",
-                fix: "lidless release")
+                fix: "lidsomnia release")
         case (true?, let n):
             add("sleep flag", .ok, "Mac held awake by \(n) hold\(n == 1 ? "" : "s")")
         case (false?, _):
@@ -137,15 +137,15 @@ public enum Doctor {
 
         if f.deadHolds > 0 {
             add("holds", .warn, "\(f.deadHolds) hold\(f.deadHolds == 1 ? "" : "s") left by processes that have exited",
-                fix: "lidless reap")
+                fix: "lidsomnia reap")
         }
 
         if let error = f.configError {
-            add("config", .fail, "~/.lidless/config.json is invalid, so defaults are used: \(error)",
-                fix: "edit ~/.lidless/config.json")
+            add("config", .fail, "~/.lidsomnia/config.json is invalid, so defaults are used: \(error)",
+                fix: "edit ~/.lidsomnia/config.json")
         } else if !f.unknownConfigKeys.isEmpty {
             add("config", .warn, "unknown keys (typos?) are ignored: \(f.unknownConfigKeys.joined(separator: ", "))",
-                fix: "edit ~/.lidless/config.json")
+                fix: "edit ~/.lidsomnia/config.json")
         } else {
             let c = f.config
             add("config", .ok, (f.configExists ? "" : "defaults: ")
@@ -153,9 +153,9 @@ public enum Doctor {
         }
 
         if let error = f.alertsError {
-            add("alerts", .fail, error, fix: "edit ~/.lidless/config.json")
+            add("alerts", .fail, error, fix: "edit ~/.lidsomnia/config.json")
         } else if f.config.alerts.isConfigured {
-            add("alerts", .ok, f.config.alerts.channels.joined(separator: ", "), fix: "lidless test-alert")
+            add("alerts", .ok, f.config.alerts.channels.joined(separator: ", "), fix: "lidsomnia test-alert")
         } else {
             add("alerts", .ok, "off (optional: add alerts.ntfyTopic to get phone alerts)")
         }

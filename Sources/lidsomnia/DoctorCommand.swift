@@ -1,10 +1,10 @@
 import Darwin
 import Foundation
-import LidlessCore
+import LidsomniaCore
 
-/// `lidless doctor`: check the setup and print the fix for anything wrong.
+/// `lidsomnia doctor`: check the setup and print the fix for anything wrong.
 func doctorCommand() -> Int32 {
-    let paths = LidlessPaths.standard()
+    let paths = LidsomniaPaths.standard()
     let fm = FileManager.default
     let probe = SystemProcessProbe()
 
@@ -24,7 +24,7 @@ func doctorCommand() -> Int32 {
     // Binaries on PATH, in PATH order
     let pathBinaries = (ProcessInfo.processInfo.environment["PATH"] ?? "")
         .split(separator: ":")
-        .map { URL(fileURLWithPath: String($0)).appendingPathComponent("lidless").standardizedFileURL.path }
+        .map { URL(fileURLWithPath: String($0)).appendingPathComponent("lidsomnia").standardizedFileURL.path }
         .filter { fm.isExecutableFile(atPath: $0) }
 
     // Holds
@@ -70,7 +70,7 @@ func doctorCommand() -> Int32 {
     facts.codexVersion = codexVersion
 
     let checks = Doctor.evaluate(facts)
-    print("lidless \(lidlessVersion) doctor\n")
+    print("lidsomnia \(lidsomniaVersion) doctor\n")
     let width = (checks.map(\.name.count).max() ?? 0) + 2
     for c in checks {
         print("\(c.status.symbol) \(c.name.padding(toLength: width, withPad: " ", startingAt: 0))\(c.detail)")

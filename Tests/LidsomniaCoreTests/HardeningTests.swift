@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import LidlessCore
+@testable import LidsomniaCore
 
 @Suite struct HardeningTests {
     private func record(held: Bool, reason: HoldReason) -> HoldRecord {

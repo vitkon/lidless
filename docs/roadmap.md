@@ -1,4 +1,4 @@
-# lidless — roadmap
+# lidsomnia — roadmap
 
 v1 (shipped 2026-11-08) is described in [spec.md](spec.md). This file tracks what comes next, roughly in priority order. Each item lists the problem it solves, the proposed design, and the open questions to settle before building it.
 
@@ -6,18 +6,18 @@ v1 (shipped 2026-11-08) is described in [spec.md](spec.md). This file tracks wha
 
 | Item | Problem | Fix |
 |---|---|---|
-| Honest status when pmset fails | `lidless status` showed `holding` even if `sudo pmset` was refused. | Hold records carry `effective`; status shows `NOT holding (sudo pmset failed…)`. |
-| Instant re-acquire | After an idle release, a new prompt waited up to 30 s for the next tick. | The `busy` hook sends `SIGUSR1` to the wrapper (`LIDLESS_PID`), which re-evaluates immediately. |
-| Strict argument parsing | `lidless setup -S` silently ignored `-S`. | Unknown flags and arguments are usage errors (exit 2). |
-| Watchdog follows installs | The LaunchAgent pointed at whichever binary ran `setup`. | `make install` re-runs `lidless setup --agent-only`; the binary path is no longer symlink-resolved, so Homebrew's stable `/opt/homebrew/bin/lidless` survives upgrades. |
-| Homebrew | Install meant cloning and `make install`. | `brew install vitkon/tap/lidless`. Source-build formula from the tagged tarball, published by `scripts/release.sh <version>`. |
-| `--version` | No way to tell which build is installed. | `lidless --version`. |
+| Honest status when pmset fails | `lidsomnia status` showed `holding` even if `sudo pmset` was refused. | Hold records carry `effective`; status shows `NOT holding (sudo pmset failed…)`. |
+| Instant re-acquire | After an idle release, a new prompt waited up to 30 s for the next tick. | The `busy` hook sends `SIGUSR1` to the wrapper (`LIDSOMNIA_PID`), which re-evaluates immediately. |
+| Strict argument parsing | `lidsomnia setup -S` silently ignored `-S`. | Unknown flags and arguments are usage errors (exit 2). |
+| Watchdog follows installs | The LaunchAgent pointed at whichever binary ran `setup`. | `make install` re-runs `lidsomnia setup --agent-only`; the binary path is no longer symlink-resolved, so Homebrew's stable `/opt/homebrew/bin/lidsomnia` survives upgrades. |
+| Homebrew | Install meant cloning and `make install`. | `brew install vitkon/tap/lidsomnia`. Source-build formula from the tagged tarball, published by `scripts/release.sh <version>`. |
+| `--version` | No way to tell which build is installed. | `lidsomnia --version`. |
 
 Remote Control phone prompts were verified to fire the hooks, so no fallback was needed.
 
 ## v2.0: phone alerts (done)
 
-ntfy and webhook alerts for `lowBattery`, `thermal`, `idle` and `finished` (jobs of 5+ minutes), sent before the Mac is allowed to sleep. `lidless test-alert` checks the wiring. The open question about `finished` defaults was settled with `finishedMinMinutes: 5`. Details in [spec.md](spec.md#phone-alerts-v20).
+ntfy and webhook alerts for `lowBattery`, `thermal`, `idle` and `finished` (jobs of 5+ minutes), sent before the Mac is allowed to sleep. `lidsomnia test-alert` checks the wiring. The open question about `finished` defaults was settled with `finishedMinMinutes: 5`. Details in [spec.md](spec.md#phone-alerts-v20).
 
 ## v2.0.1: Homebrew bottles (done)
 
@@ -25,21 +25,25 @@ On a `v*` tag, GitHub Actions builds and tests bottles on `macos-15` (arm64) and
 
 ## v2.0.2: auto-detect sessions (done)
 
-Opt-in `autoDetect: true`: the watchdog adopts `claude` sessions not started through lidless (including `claude --bg`), judging idleness by transcript writes with the same `idleTimeoutMinutes`. Details in [spec.md](spec.md#auto-detect-v202).
+Opt-in `autoDetect: true`: the watchdog adopts `claude` sessions not started through lidsomnia (including `claude --bg`), judging idleness by transcript writes with the same `idleTimeoutMinutes`. Details in [spec.md](spec.md#auto-detect-v202).
 
-## v2.0.3: `lidless doctor` (done)
+## v2.0.3: `lidsomnia doctor` (done)
 
 Checks sudoers, the watchdog, PATH shadowing, a stale `SleepDisabled`, dead holds, config validity and typos, alert URLs, auto-detect wiring, Claude Code, and battery/thermal state. Each problem prints the exact command that fixes it. Details in [spec.md](spec.md#doctor-v203).
 
 ## v2.0.4: Codex support (done)
 
-`lidless codex …` plus auto-detect for Codex processes (CLI, `remote-control` daemon, VS Code extension), judged by Codex session-file writes because Codex requires per-hook approval. Also fixed auto-detect adopting agents' bundled tools (`ugrep`, `apply_patch`). Details in [spec.md](spec.md#codex-v204).
+`lidsomnia codex …` plus auto-detect for Codex processes (CLI, `remote-control` daemon, VS Code extension), judged by Codex session-file writes because Codex requires per-hook approval. Also fixed auto-detect adopting agents' bundled tools (`ugrep`, `apply_patch`). Details in [spec.md](spec.md#codex-v204).
 
-## Next: `lidless setup --codex-hooks`
+## v2.1.0: renamed from lidless (done)
+
+Other apps already use the name lidless. Old installs keep working: Homebrew migrates the formula (`formula_renames.json` in the tap), a `lidless` symlink stays as an alias, and on first run lidsomnia moves `~/.lidless` to `~/.lidsomnia` (skipped while an old wrapper is still running) and swaps the `com.lidless.watchdog` agent for `com.lidsomnia.watchdog`. The old sudoers rule is the same rule and stays valid; `lidsomnia setup` replaces it, `uninstall` removes both.
+
+## Next: `lidsomnia setup --codex-hooks`
 
 **Problem.** Session-file activity is less precise than hooks: a long single command with no session writes can be released mid-task.
 
-**Design.** Opt-in setup step that adds lidless's busy/idle hooks to `~/.codex/hooks.json`; you approve them once in Codex's hook review. Hooks map to holds via `LIDLESS_ACTIVITY_FILE` for wrapped runs, and to adopted holds by session cwd otherwise.
+**Design.** Opt-in setup step that adds lidsomnia's busy/idle hooks to `~/.codex/hooks.json`; you approve them once in Codex's hook review. Hooks map to holds via `LIDSOMNIA_ACTIVITY_FILE` for wrapped runs, and to adopted holds by session cwd otherwise.
 
 ## Later / maybe
 

@@ -1,6 +1,6 @@
 import Darwin
 import Foundation
-import LidlessCore
+import LidsomniaCore
 
 /// Darwin process inspection for auto-detect and liveness checks.
 enum ProcessScanner {

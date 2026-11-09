@@ -2,19 +2,19 @@ import Darwin
 import Foundation
 
 let usage = """
-lidless \(lidlessVersion) — keep your Mac awake (even with the lid closed) while a job runs
+lidsomnia \(lidsomniaVersion) — keep your Mac awake (even with the lid closed) while a job runs
 
 usage:
-  lidless [--sleep-after] <command> [args…]   run a command and hold the Mac awake while it's active
-  lidless setup [--agent-only]                install the sudoers rule and watchdog (once)
-  lidless uninstall                           remove them and re-enable sleep
-  lidless status                              show holds, power and setup state
-  lidless release                             drop all holds now (panic button)
-  lidless test-alert                          send a test alert to your phone (ntfy / webhook)
-  lidless doctor                              check the setup and show how to fix problems
-  lidless --version
+  lidsomnia [--sleep-after] <command> [args…]   run a command and hold the Mac awake while it's active
+  lidsomnia setup [--agent-only]                install the sudoers rule and watchdog (once)
+  lidsomnia uninstall                           remove them and re-enable sleep
+  lidsomnia status                              show holds, power and setup state
+  lidsomnia release                             drop all holds now (panic button)
+  lidsomnia test-alert                          send a test alert to your phone (ntfy / webhook)
+  lidsomnia doctor                              check the setup and show how to fix problems
+  lidsomnia --version
 
-`claude` sessions release the hold after 30 minutes idle (config: ~/.lidless/config.json).
+`claude` sessions release the hold after 30 minutes idle (config: ~/.lidsomnia/config.json).
 """
 
 func usageError(_ message: String) -> Never {
@@ -37,6 +37,16 @@ var args = Array(CommandLine.arguments.dropFirst())
 let rest = Array(args.dropFirst())
 
 switch args.first {
+case "hook", "-v", "--version", "version", "-h", "--help", "help", nil:
+    break
+default:
+    migrateLegacyInstall()
+    if invokedAsLegacyName && isatty(STDERR_FILENO) == 1 {
+        stderrLine("lidless is now called lidsomnia; the `lidless` command still works but may go away later")
+    }
+}
+
+switch args.first {
 case nil:
     print(usage)
     exit(1)
@@ -44,7 +54,7 @@ case "-h", "--help", "help":
     print(usage)
     exit(0)
 case "-v", "--version", "version":
-    print("lidless \(lidlessVersion)")
+    print("lidsomnia \(lidsomniaVersion)")
     exit(0)
 case "setup":
     expectArgs(rest, allowed: ["--agent-only"], for: "setup")

@@ -1,5 +1,5 @@
 import Foundation
-import LidlessCore
+import LidsomniaCore
 
 struct AlertResult {
     var channel: String
@@ -9,7 +9,7 @@ struct AlertResult {
 }
 
 /// Sends alert requests and waits (bounded) for them, so an alert always leaves the
-/// machine before lidless lets it sleep.
+/// machine before lidsomnia lets it sleep.
 enum AlertSender {
     static func send(_ requests: [URLRequest], timeout: TimeInterval = 6) -> [AlertResult] {
         guard !requests.isEmpty else { return [] }
@@ -55,7 +55,7 @@ func sendAlert(_ kind: AlertKind, record: HoldRecord, readings r: Readings, exit
 }
 
 func testAlertCommand() -> Int32 {
-    let paths = LidlessPaths.standard()
+    let paths = LidsomniaPaths.standard()
     let config = Config.load(from: paths.config)
     guard config.alerts.isConfigured else {
         stderrLine("""
@@ -66,7 +66,7 @@ func testAlertCommand() -> Int32 {
         return 1
     }
     let r = SystemReadings().read()
-    let event = AlertEvent(kind: .test, host: AlertSender.hostName(), command: "lidless test-alert",
+    let event = AlertEvent(kind: .test, host: AlertSender.hostName(), command: "lidsomnia test-alert",
                            pid: getpid(), exitCode: nil, durationSeconds: 0, batteryPercent: r.batteryPercent,
                            onBattery: r.onBattery, thermal: r.thermal, at: Date())
     do {

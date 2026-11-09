@@ -103,7 +103,7 @@ public struct Config: Codable, Equatable, Sendable {
     public var thermalLimit: ThermalLevel = .serious
     public var notify: Bool = true
     public var alerts = AlertConfig()
-    /// Also keep the Mac awake for `claude` sessions not started through lidless.
+    /// Also keep the Mac awake for `claude` sessions not started through lidsomnia.
     public var autoDetect: Bool = false
 
     public init() {}
@@ -129,7 +129,7 @@ public struct Config: Codable, Equatable, Sendable {
         do {
             return try decode(data)
         } catch {
-            FileHandle.standardError.write(Data("lidless: ignoring invalid \(url.path): \(error)\n".utf8))
+            FileHandle.standardError.write(Data("lidsomnia: ignoring invalid \(url.path): \(error)\n".utf8))
             return Config()
         }
     }

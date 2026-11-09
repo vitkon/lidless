@@ -46,7 +46,7 @@ jobs:
           echo "version=$V" >> "$GITHUB_OUTPUT"
           echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
           echo "publish=$P" >> "$GITHUB_OUTPUT"
-          echo "lidless $V, tarball sha256 $SHA, publish=$P"
+          echo "lidsomnia $V, tarball sha256 $SHA, publish=$P"
 
   bottle:
     needs: version
@@ -68,13 +68,13 @@ jobs:
         run: |
           brew tap vitkon/tap
           brew trust vitkon/tap || true  # Homebrew 7+ refuses to load formulae from untrusted taps
-          sed -e "s|@VERSION@|$V|g" -e "s|@SHA256@|$SHA|g" packaging/lidless.rb.in \
-            > "$(brew --repository vitkon/tap)/Formula/lidless.rb"
+          sed -e "s|@VERSION@|$V|g" -e "s|@SHA256@|$SHA|g" packaging/lidsomnia.rb.in \
+            > "$(brew --repository vitkon/tap)/Formula/lidsomnia.rb"
       - name: Build and test bottle
         run: |
-          brew install --build-bottle vitkon/tap/lidless
-          brew test vitkon/tap/lidless
-          brew bottle --json --root-url="https://github.com/$GITHUB_REPOSITORY/releases/download/v$V" vitkon/tap/lidless
+          brew install --build-bottle vitkon/tap/lidsomnia
+          brew test vitkon/tap/lidsomnia
+          brew bottle --json --root-url="https://github.com/$GITHUB_REPOSITORY/releases/download/v$V" vitkon/tap/lidsomnia
           for j in *.bottle.json; do
             mv "$(jq -r '.[].bottle.tags[].local_filename' "$j")" "$(jq -r '.[].bottle.tags[].filename' "$j")"
           done
@@ -103,7 +103,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v$V" bottles/*.bottle*.tar.gz --title "lidless $V" --generate-notes \
+          gh release create "v$V" bottles/*.bottle*.tar.gz --title "lidsomnia $V" --generate-notes \
             || gh release upload "v$V" bottles/*.bottle*.tar.gz --clobber
       - uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -113,13 +113,13 @@ jobs:
           brew tap vitkon/tap
           brew trust vitkon/tap || true
           TAP="$(brew --repository vitkon/tap)"
-          sed -e "s|@VERSION@|$V|g" -e "s|@SHA256@|$SHA|g" packaging/lidless.rb.in > "$TAP/Formula/lidless.rb"
+          sed -e "s|@VERSION@|$V|g" -e "s|@SHA256@|$SHA|g" packaging/lidsomnia.rb.in > "$TAP/Formula/lidsomnia.rb"
           brew bottle --merge --write --no-commit bottles/*.bottle.json
           cd "$TAP"
-          git config user.name "lidless release bot"
+          git config user.name "lidsomnia release bot"
           git config user.email "actions@github.com"
           git remote set-url origin git@github.com:vitkon/homebrew-tap.git
-          git add Formula/lidless.rb
-          git commit -m "lidless $V (bottled)"
+          git add Formula/lidsomnia.rb
+          git commit -m "lidsomnia $V (bottled)"
           git push origin HEAD:main
-          cat Formula/lidless.rb
+          cat Formula/lidsomnia.rb

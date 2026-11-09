@@ -1,7 +1,7 @@
 import Darwin
 import Foundation
 import IOKit.ps
-import LidlessCore
+import LidsomniaCore
 
 struct ShellResult {
     var status: Int32
@@ -52,7 +52,7 @@ struct PmsetPowerControl: PowerControl {
     private func sudoPmset(_ args: [String]) throws {
         let r = try shell("/usr/bin/sudo", ["-n", "/usr/bin/pmset"] + args)
         guard r.status == 0 else {
-            throw LidlessError.privilege(r.stderr.trimmingCharacters(in: .whitespacesAndNewlines))
+            throw LidsomniaError.privilege(r.stderr.trimmingCharacters(in: .whitespacesAndNewlines))
         }
     }
 }
@@ -91,34 +91,37 @@ struct SystemReadings: PowerReadingsSource {
 
 struct SystemProcessProbe: ProcessProbe {
     func isLive(_ hold: HoldRecord) -> Bool {
-        guard hold.adopted else { return isLiveLidless(pid: hold.pid) }
+        guard hold.adopted else { return isLiveLidsomnia(pid: hold.pid) }
         guard ProcessScanner.isAlive(hold.pid), let path = ProcessScanner.path(hold.pid) else { return false }
         return AutoDetect.agentKind(path: path, argv: ProcessScanner.argv(hold.pid)) == hold.kind
     }
 
-    func isLiveLidless(pid: Int32) -> Bool {
+    func isLiveLidsomnia(pid: Int32) -> Bool {
         guard ProcessScanner.isAlive(pid), let path = ProcessScanner.path(pid) else { return false }
-        return (path as NSString).lastPathComponent == "lidless"
+        // proc_pidpath resolves symlinks; a wrapper started before the rename runs a `lidless` binary.
+        let name = (path as NSString).lastPathComponent
+        return name == "lidsomnia" || name == Migration.legacyName
     }
 }
 
 struct OsascriptNotifier: Notifier {
     func notify(_ message: String) {
         let escaped = message.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
-        _ = try? shell("/usr/bin/osascript", ["-e", "display notification \"\(escaped)\" with title \"lidless\""])
+        _ = try? shell("/usr/bin/osascript", ["-e", "display notification \"\(escaped)\" with title \"lidsomnia\""])
     }
 }
 
-/// Absolute path of the running lidless binary, as invoked. Symlinks are deliberately NOT
-/// resolved: with Homebrew, /opt/homebrew/bin/lidless is stable while the Cellar path it
+/// Absolute path of the running lidsomnia binary, as invoked. Symlinks are deliberately NOT
+/// resolved: with Homebrew, /opt/homebrew/bin/lidsomnia is stable while the Cellar path it
 /// points to changes on every upgrade, which would break the watchdog and hooks.
 func selfExecutablePath() -> String {
     var size: UInt32 = 4096
     var buf = [CChar](repeating: 0, count: Int(size))
     guard _NSGetExecutablePath(&buf, &size) == 0 else { return CommandLine.arguments[0] }
-    return URL(fileURLWithPath: String(cString: buf)).standardizedFileURL.path
+    let invoked = URL(fileURLWithPath: String(cString: buf)).standardizedFileURL.path
+    return Migration.preferredBinary(invoked: invoked) { FileManager.default.isExecutableFile(atPath: $0) }
 }
 
 func stderrLine(_ s: String) {
-    FileHandle.standardError.write(Data("lidless: \(s)\n".utf8))
+    FileHandle.standardError.write(Data("lidsomnia: \(s)\n".utf8))
 }

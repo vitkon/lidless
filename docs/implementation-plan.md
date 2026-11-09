@@ -1,10 +1,10 @@
-# lidless — implementation plan
+# lidsomnia — implementation plan
 
 See [spec.md](spec.md) for the design. Tasks are ordered so each one ends with passing tests or a runnable binary.
 
 ## 1. Scaffold
-- `Package.swift`: library `LidlessCore`, executable `lidless`, test target `LidlessCoreTests` (Swift Testing). No dependencies; hand-rolled subcommand dispatch.
-- `Makefile`: `build`, `test`, `install` (release build → `~/.local/bin/lidless`), `uninstall`.
+- `Package.swift`: library `LidsomniaCore`, executable `lidsomnia`, test target `LidsomniaCoreTests` (Swift Testing). No dependencies; hand-rolled subcommand dispatch.
+- `Makefile`: `build`, `test`, `install` (release build → `~/.local/bin/lidsomnia`), `uninstall`.
 - `git init`, `.gitignore`.
 
 ## 2. Core model + decision logic (TDD)
@@ -22,7 +22,7 @@ See [spec.md](spec.md) for the design. Tasks are ordered so each one ends with p
 ## 5. System adapters (executable target)
 - `PmsetPowerControl` (`pmset -g` parse, `sudo -n /usr/bin/pmset …`).
 - `SystemReadings` (IOKit `IOPSCopyPowerSourcesInfo`, `ProcessInfo.thermalState`).
-- `SystemProcessProbe` (`kill(pid,0)` + `proc_pidpath` basename == `lidless`).
+- `SystemProcessProbe` (`kill(pid,0)` + `proc_pidpath` basename == `lidsomnia`).
 - `OsascriptNotifier`.
 
 ## 6. Commands
@@ -32,5 +32,5 @@ See [spec.md](spec.md) for the design. Tasks are ordered so each one ends with p
 
 ## 7. Verify
 - `swift test` green.
-- Run the manual checklist in the spec (needs `lidless setup` by the user).
+- Run the manual checklist in the spec (needs `lidsomnia setup` by the user).
 - Verify the RC `UserPromptSubmit` open question.

@@ -4,7 +4,7 @@ public enum AlertKind: String, Codable, CaseIterable, Sendable {
     case lowBattery, thermal, idle, finished, test
 }
 
-/// `alerts` section of `~/.lidless/config.json`. Every key is optional.
+/// `alerts` section of `~/.lidsomnia/config.json`. Every key is optional.
 public struct AlertConfig: Codable, Equatable, Sendable {
     public var ntfyTopic: String?
     public var ntfyServer: String = "https://ntfy.sh"
@@ -31,7 +31,7 @@ public struct AlertConfig: Codable, Equatable, Sendable {
     var webhook: String? { nonEmpty(webhookURL) }
     public var isConfigured: Bool { topic != nil || webhook != nil }
 
-    /// Human-readable list of active channels, for `lidless status`.
+    /// Human-readable list of active channels, for `lidsomnia status`.
     public var channels: [String] {
         var out: [String] = []
         if let t = topic { out.append("ntfy \(t)") }
@@ -127,7 +127,7 @@ public enum Alerts {
                 ? AlertMessage(title: "Job finished on \(e.host)", body: ran, priority: 3, tags: ["white_check_mark"])
                 : AlertMessage(title: "Job failed (exit \(code)) on \(e.host)", body: ran, priority: 4, tags: ["x"])
         case .test:
-            return AlertMessage(title: "lidless test alert",
+            return AlertMessage(title: "lidsomnia test alert",
                                 body: "Alerts from \(e.host) are working.", priority: 3, tags: ["bell"])
         }
     }
@@ -143,7 +143,7 @@ public enum Alerts {
         if let topic = a.topic {
             let server = a.ntfyServer.hasSuffix("/") ? String(a.ntfyServer.dropLast()) : a.ntfyServer
             guard let url = URL(string: server), url.scheme?.hasPrefix("http") == true else {
-                throw LidlessError.command("invalid alerts.ntfyServer: \(a.ntfyServer)")
+                throw LidsomniaError.command("invalid alerts.ntfyServer: \(a.ntfyServer)")
             }
             var r = jsonPost(url, [
                 "topic": topic, "title": msg.title, "message": msg.body,
@@ -157,7 +157,7 @@ public enum Alerts {
 
         if let hook = a.webhook {
             guard let url = URL(string: hook), url.scheme?.hasPrefix("http") == true, url.host != nil else {
-                throw LidlessError.command("invalid alerts.webhookURL: \(hook)")
+                throw LidsomniaError.command("invalid alerts.webhookURL: \(hook)")
             }
             var body = (try? JSONSerialization.jsonObject(with: HoldStore.encoder.encode(e))) as? [String: Any] ?? [:]
             body["title"] = msg.title

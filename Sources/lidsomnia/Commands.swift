@@ -1,33 +1,37 @@
 import Darwin
 import Foundation
-import LidlessCore
+import LidsomniaCore
 
-let sudoersPath = "/etc/sudoers.d/lidless"
-let agentLabel = "com.lidless.watchdog"
+let sudoersPath = "/etc/sudoers.d/lidsomnia"
+/// Installed by setup now, or by setup under the old name (same rule, still works).
+var sudoersInstalled: Bool {
+    FileManager.default.fileExists(atPath: sudoersPath) || FileManager.default.fileExists(atPath: Migration.legacySudoersPath)
+}
+let agentLabel = "com.lidsomnia.watchdog"
 
 var agentPlistURL: URL {
     FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/LaunchAgents/\(agentLabel).plist")
 }
 
-func makeReconciler() -> (Reconciler, LidlessPaths) {
-    let paths = LidlessPaths.standard()
+func makeReconciler() -> (Reconciler, LidsomniaPaths) {
+    let paths = LidsomniaPaths.standard()
     try? paths.ensure()
     let r = Reconciler(store: HoldStore(paths: paths), power: PmsetPowerControl(),
                        probe: SystemProcessProbe(), lockURL: paths.lock)
     return (r, paths)
 }
 
-/// `lidless hook busy|idle` — called by Claude Code hooks. Must never fail or block claude.
+/// `lidsomnia hook busy|idle` — called by Claude Code hooks. Must never fail or block claude.
 func hookCommand(_ state: String) -> Int32 {
     guard let s = ActivityState(rawValue: state),
-          let file = ProcessInfo.processInfo.environment["LIDLESS_ACTIVITY_FILE"], !file.isEmpty
+          let file = ProcessInfo.processInfo.environment["LIDSOMNIA_ACTIVITY_FILE"], !file.isEmpty
     else { return 0 }
-    let store = HoldStore(paths: LidlessPaths.standard())
+    let store = HoldStore(paths: LidsomniaPaths.standard())
     try? store.writeActivity(Activity(state: s, at: Date()), to: URL(fileURLWithPath: file))
-    if let pidString = ProcessInfo.processInfo.environment["LIDLESS_PID"], let pid = Int32(pidString),
+    if let pidString = ProcessInfo.processInfo.environment["LIDSOMNIA_PID"], let pid = Int32(pidString),
        shouldWakeWrapper(record: try? store.read(pid: pid), state: s),
-       SystemProcessProbe().isLiveLidless(pid: pid) {
+       SystemProcessProbe().isLiveLidsomnia(pid: pid) {
         kill(pid, SIGUSR1)  // re-acquire now instead of at the next 30 s tick
     }
     return 0
@@ -129,8 +133,8 @@ func statusCommand() -> Int32 {
 
     print("SleepDisabled  \(disabled)")
     print("power          \(r.onBattery ? "battery" : "AC"), \(battery), thermal \(r.thermal.rawValue)")
-    print("setup          sudoers \(FileManager.default.fileExists(atPath: sudoersPath) ? "✓" : "✗ (run `lidless setup`)"), watchdog \(FileManager.default.fileExists(atPath: agentPlistURL.path) ? "✓" : "✗")")
-    print("alerts         \(config.alerts.isConfigured ? config.alerts.channels.joined(separator: ", ") + " (" + config.alerts.events.map(\.rawValue).joined(separator: ", ") + ")" : "off (see `lidless test-alert`)")")
+    print("setup          sudoers \(sudoersInstalled ? "✓" : "✗ (run `lidsomnia setup`)"), watchdog \(FileManager.default.fileExists(atPath: agentPlistURL.path) ? "✓" : "✗")")
+    print("alerts         \(config.alerts.isConfigured ? config.alerts.channels.joined(separator: ", ") + " (" + config.alerts.events.map(\.rawValue).joined(separator: ", ") + ")" : "off (see `lidsomnia test-alert`)")")
     print("config         idle \(Int(config.idleTimeoutMinutes))m, battery floor \(config.batteryFloorPercent)%, thermal limit \(config.thermalLimit.rawValue), auto-detect \(config.autoDetect ? "on" : "off")")
 
     let holds = store.list()
@@ -143,7 +147,7 @@ func statusCommand() -> Int32 {
     for h in holds {
         let alive = probe.isLive(h)
         let state = !h.held ? "released (\(h.reason.rawValue))"
-            : h.effective ? "holding" : "NOT holding (sudo pmset failed, run `lidless setup`)"
+            : h.effective ? "holding" : "NOT holding (sudo pmset failed, run `lidsomnia setup`)"
         var line = "  [\(h.pid)] \(state)"
         if !alive { line += " — DEAD, will be reaped" }
         if h.adopted || h.kind == .codex {
@@ -187,12 +191,12 @@ func setupCommand(agentOnly: Bool = false) -> Int32 {
     }
     let user = NSUserName()
     let rule = """
-    # Installed by lidless — allows toggling closed-lid sleep without a password.
+    # Installed by lidsomnia — allows toggling closed-lid sleep without a password.
     \(user) ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 0, /usr/bin/pmset -a disablesleep 1, /usr/bin/pmset sleepnow
 
     """
     do {
-        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("lidless-sudoers-\(getpid())")
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("lidsomnia-sudoers-\(getpid())")
         try Data(rule.utf8).write(to: tmp)
         defer { try? FileManager.default.removeItem(at: tmp) }
 
@@ -202,8 +206,10 @@ func setupCommand(agentOnly: Bool = false) -> Int32 {
             return 1
         }
         print("Installing \(sudoersPath) (you'll be asked for your password)…")
-        let install = try runAsAdmin(["/usr/bin/install", "-m", "0440", "-o", "root", "-g", "wheel",
-                                      tmp.path, sudoersPath])
+        // Also drops the rule installed under the old name, if any.
+        let install = try runAsAdmin(["/bin/sh", "-c",
+                                      "/usr/bin/install -m 0440 -o root -g wheel \"$1\" \"$2\" && /bin/rm -f \"$3\"",
+                                      "sh", tmp.path, sudoersPath, Migration.legacySudoersPath])
         guard install.status == 0 else {
             stderrLine("failed to install sudoers rule")
             return 1
@@ -212,8 +218,8 @@ func setupCommand(agentOnly: Bool = false) -> Int32 {
         print("✓ sudoers rule installed and working")
 
         try installAgent(bin: bin)
-        print("✓ watchdog \(agentLabel) installed (runs `lidless reap` every 60s)")
-        print("\nReady. Try: lidless claude --remote-control")
+        print("✓ watchdog \(agentLabel) installed (runs `lidsomnia reap` every 60s)")
+        print("\nReady. Try: lidsomnia claude --remote-control")
         return 0
     } catch {
         stderrLine("\(error)")
@@ -230,12 +236,12 @@ func runAsAdmin(_ argv: [String]) throws -> ShellResult {
     let command = argv.map(sq).joined(separator: " ")
     let escaped = command.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
     return try shell("/usr/bin/osascript", [
-        "-e", "do shell script \"\(escaped)\" with administrator privileges with prompt \"lidless needs to install a sudoers rule for pmset.\"",
+        "-e", "do shell script \"\(escaped)\" with administrator privileges with prompt \"lidsomnia needs to install a sudoers rule for pmset.\"",
     ])
 }
 
 func installAgent(bin: String) throws {
-    let paths = LidlessPaths.standard()
+    let paths = LidsomniaPaths.standard()
     try paths.ensure()
     let plist: [String: Any] = [
         "Label": agentLabel,
@@ -251,7 +257,7 @@ func installAgent(bin: String) throws {
     _ = try? shell("/bin/launchctl", ["bootout", "\(domain)/\(agentLabel)"])
     try data.write(to: agentPlistURL, options: .atomic)
     let r = try shell("/bin/launchctl", ["bootstrap", domain, agentPlistURL.path])
-    guard r.status == 0 else { throw LidlessError.command("launchctl bootstrap failed: \(r.stderr)") }
+    guard r.status == 0 else { throw LidsomniaError.command("launchctl bootstrap failed: \(r.stderr)") }
 }
 
 func uninstallCommand() -> Int32 {
@@ -269,9 +275,9 @@ func uninstallCommand() -> Int32 {
         ok = false
     }
 
-    if FileManager.default.fileExists(atPath: sudoersPath) {
+    if sudoersInstalled {
         print("Removing \(sudoersPath) (you may be asked for your password)…")
-        let r = try? runAsAdmin(["/bin/rm", "-f", sudoersPath])
+        let r = try? runAsAdmin(["/bin/rm", "-f", sudoersPath, Migration.legacySudoersPath])
         if r?.status == 0 { print("✓ sudoers rule removed") } else { ok = false }
     }
     return ok ? 0 : 1

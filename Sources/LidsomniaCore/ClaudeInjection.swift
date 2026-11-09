@@ -1,6 +1,6 @@
 import Foundation
 
-/// Adds lidless activity hooks to a `claude` invocation via `--settings`,
+/// Adds lidsomnia activity hooks to a `claude` invocation via `--settings`,
 /// merging with any `--settings` the user already passed.
 public enum ClaudeInjection {
     public static let busyEvents = ["UserPromptSubmit", "PreToolUse", "PostToolUse"]
@@ -12,7 +12,7 @@ public enum ClaudeInjection {
     }
 
     /// `args` excludes argv[0]. Returns new args with a single merged `--settings` first.
-    public static func inject(args: [String], lidlessPath: String) throws -> [String] {
+    public static func inject(args: [String], lidsomniaPath: String) throws -> [String] {
         var rest: [String] = []
         var settings: [String: Any] = [:]
         var i = 0
@@ -31,13 +31,13 @@ public enum ClaudeInjection {
             rest.append(a)
             i += 1
         }
-        merge(into: &settings, hooks(lidlessPath: lidlessPath))
+        merge(into: &settings, hooks(lidsomniaPath: lidsomniaPath))
         let data = try JSONSerialization.data(withJSONObject: settings, options: [.sortedKeys, .withoutEscapingSlashes])
         return ["--settings", String(decoding: data, as: UTF8.self)] + rest
     }
 
-    static func hooks(lidlessPath: String) -> [String: Any] {
-        let quoted = "'" + lidlessPath.replacingOccurrences(of: "'", with: #"'\''"#) + "'"
+    static func hooks(lidsomniaPath: String) -> [String: Any] {
+        let quoted = "'" + lidsomniaPath.replacingOccurrences(of: "'", with: #"'\''"#) + "'"
         var events: [String: Any] = [:]
         for (list, state) in [(busyEvents, "busy"), (idleEvents, "idle")] {
             for event in list {
@@ -60,12 +60,12 @@ public enum ClaudeInjection {
         } else {
             let path = (trimmed as NSString).expandingTildeInPath
             guard let d = FileManager.default.contents(atPath: path) else {
-                throw LidlessError.command("can't read --settings file \(path)")
+                throw LidsomniaError.command("can't read --settings file \(path)")
             }
             data = d
         }
         guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw LidlessError.command("--settings value is not a JSON object")
+            throw LidsomniaError.command("--settings value is not a JSON object")
         }
         return obj
     }

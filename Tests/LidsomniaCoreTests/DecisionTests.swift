@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import LidlessCore
+@testable import LidsomniaCore
 
 private let t0 = Date(timeIntervalSince1970: 1_000_000)
 private let plugged = Readings(onBattery: false, batteryPercent: 80, thermal: .nominal)
@@ -124,7 +124,7 @@ private func input(
     }
 
     @Test func missingFileGivesDefaults() {
-        let url = URL(fileURLWithPath: "/nonexistent/lidless/config.json")
+        let url = URL(fileURLWithPath: "/nonexistent/lidsomnia/config.json")
         #expect(Config.load(from: url) == Config())
     }
 

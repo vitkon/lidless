@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import LidlessCore
+@testable import LidsomniaCore
 
 private func proc(_ pid: Int32, ppid: Int32 = 1, path: String = "/Users/me/.local/share/claude/versions/2.1.319",
                   argv: [String] = ["claude"], cwd: String? = "/Users/me/proj") -> ProcInfo {
@@ -33,7 +33,7 @@ private func hold(_ pid: Int32, child: Int32? = nil, adopted: Bool = false) -> H
             path: "/Applications/Claude.app/Contents/Frameworks/Claude Helper.app/Contents/MacOS/Claude Helper",
             argv: ["Claude Helper"]))
         #expect(!AutoDetect.isClaudeProcess(path: "/Applications/Claude.app/Contents/MacOS/Claude", argv: ["Claude"]))
-        #expect(!AutoDetect.isClaudeProcess(path: "/usr/local/bin/lidless", argv: ["lidless", "claude"]))
+        #expect(!AutoDetect.isClaudeProcess(path: "/usr/local/bin/lidsomnia", argv: ["lidsomnia", "claude"]))
     }
 }
 
@@ -70,7 +70,7 @@ private func hold(_ pid: Int32, child: Int32? = nil, adopted: Bool = false) -> H
     }
 
     @Test func skipsSessionsAlreadyWrapped() {
-        // lidless wrapper 50 spawned claude 100
+        // lidsomnia wrapper 50 spawned claude 100
         let byChild = AutoDetect.plan(processes: [proc(100, ppid: 50)], holds: [hold(50, child: 100)], enabled: true)
         #expect(byChild.adopt.isEmpty)
         let byParent = AutoDetect.plan(processes: [proc(100, ppid: 50)], holds: [hold(50)], enabled: true)
@@ -104,8 +104,8 @@ private func hold(_ pid: Int32, child: Int32? = nil, adopted: Bool = false) -> H
     }
 
     @Test func releaseAllKeepsAdoptedHoldsAsManuallyReleased() throws {
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("lidless-test-\(UUID())")
-        let paths = LidlessPaths(home: dir)
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("lidsomnia-test-\(UUID())")
+        let paths = LidsomniaPaths(home: dir)
         try paths.ensure()
         let store = HoldStore(paths: paths)
         let power = FakePower()
