@@ -95,9 +95,16 @@ final class Wrapper {
             manuallyReleased = true  // `lidsomnia release` removed our hold
         }
         let current = readings.read()
-        let decision = decide(DecisionInput(
+        let input = DecisionInput(
             kind: record.kind, startedAt: record.startedAt, activity: currentActivity(),
-            readings: current, config: config, now: Date(), manuallyReleased: manuallyReleased))
+            readings: current, config: config, now: Date(), manuallyReleased: manuallyReleased,
+            extendedUntil: store.readExtension(pid: record.pid))
+        let decision = decide(input)
+
+        if let at = Alerts.idleWarningDue(input, decision: decision, warnedFor: record.idleWarnedFor) {
+            record.idleWarnedFor = at
+            sendAlert(.idleSoon, readings: current, exitCode: nil, until: at)
+        }
 
         // Send before releasing: with the lid shut the Mac sleeps right after, and the alert would never leave.
         if let kind = Alerts.kindForTransition(wasHeld: record.held, decision: decision) {
@@ -155,8 +162,8 @@ final class Wrapper {
         exit(exitCode)
     }
 
-    func sendAlert(_ kind: AlertKind, readings r: Readings, exitCode: Int32?) {
-        lidsomnia.sendAlert(kind, record: record, readings: r, exitCode: exitCode, config: config)
+    func sendAlert(_ kind: AlertKind, readings r: Readings, exitCode: Int32?, until: Date? = nil) {
+        lidsomnia.sendAlert(kind, record: record, readings: r, exitCode: exitCode, config: config, until: until)
     }
 
     /// The terminal delivers SIGINT to the whole foreground process group, so the child already

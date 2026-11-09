@@ -39,6 +39,10 @@ Checks sudoers, the watchdog, PATH shadowing, a stale `SleepDisabled`, dead hold
 
 Other apps already use the name lidless. Old installs keep working: Homebrew migrates the formula (`formula_renames.json` in the tap), a `lidless` symlink stays as an alias, and on first run lidsomnia moves `~/.lidless` to `~/.lidsomnia` (skipped while an old wrapper is still running) and swaps the `com.lidless.watchdog` agent for `com.lidsomnia.watchdog`. The old sudoers rule is the same rule and stays valid; `lidsomnia setup` replaces it, `uninstall` removes both.
 
+## v2.2.0: phone control (done)
+
+`idleSoon` warning five minutes before an idle release, with **Keep awake 1h** and **Sleep now** buttons (ntfy actions → control topic → watchdog). Tap confirmations; `test-alert` checks a button round trip. Details in [spec.md](spec.md#phone-control-v220).
+
 ## Next: `lidsomnia setup --codex-hooks`
 
 **Problem.** Session-file activity is less precise than hooks: a long single command with no session writes can be released mid-task.

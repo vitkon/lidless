@@ -10,7 +10,7 @@ usage:
   lidsomnia uninstall                           remove them and re-enable sleep
   lidsomnia status                              show holds, power and setup state
   lidsomnia release                             drop all holds now (panic button)
-  lidsomnia test-alert                          send a test alert to your phone (ntfy / webhook)
+  lidsomnia test-alert                          send a test alert (and check its button) [--no-wait]
   lidsomnia doctor                              check the setup and show how to fix problems
   lidsomnia --version
 
@@ -72,8 +72,8 @@ case "doctor":
     expectArgs(rest, for: "doctor")
     exit(doctorCommand())
 case "test-alert":
-    expectArgs(rest, for: "test-alert")
-    exit(testAlertCommand())
+    expectArgs(rest, allowed: ["--no-wait"], for: "test-alert")
+    exit(testAlertCommand(wait: !rest.contains("--no-wait")))
 case "reap":
     expectArgs(rest, for: "reap")
     exit(reapCommand())

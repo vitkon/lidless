@@ -72,7 +72,7 @@ public enum Doctor {
     static let configKeys: Set<String> = ["idleTimeoutMinutes", "batteryFloorPercent", "thermalLimit", "notify",
                                           "alerts", "autoDetect"]
     static let alertKeys: Set<String> = ["ntfyTopic", "ntfyServer", "ntfyToken", "webhookURL", "events",
-                                         "finishedMinMinutes"]
+                                         "finishedMinMinutes", "idleWarningMinutes", "phoneControl", "controlTopic"]
 
     /// Keys lidsomnia doesn't know (usually typos), as `key` or `alerts.key`, sorted.
     public static func unknownKeys(in data: Data) -> [String] {

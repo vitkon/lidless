@@ -45,6 +45,7 @@ func reapCommand() -> Int32 {
     let probe = SystemProcessProbe()
     let config = Config.load(from: paths.config)
     let stamp = ISO8601DateFormatter().string(from: Date())
+    applyPhoneControl(reconciler: reconciler, config: config, paths: paths, stamp: stamp)
     do {
         let holds = store.list()
         if config.autoDetect || holds.contains(where: \.adopted) {
@@ -87,10 +88,16 @@ func evaluateAdopted(reconciler: Reconciler, probe: ProcessProbe, config: Config
     let readings = SystemReadings().read()
     for var r in store.list() where r.adopted && probe.isLive(r) {
         let lastWrite = lastAdoptedWrite(r) ?? r.startedAt
-        let decision = decide(DecisionInput(
+        let input = DecisionInput(
             kind: r.kind, startedAt: r.startedAt, activity: Activity(state: .idle, at: max(lastWrite, r.startedAt)),
             readings: readings, config: config, now: Date(),
-            manuallyReleased: r.reason == .manual && !r.held))
+            manuallyReleased: r.reason == .manual && !r.held, extendedUntil: store.readExtension(pid: r.pid))
+        let decision = decide(input)
+        if let at = Alerts.idleWarningDue(input, decision: decision, warnedFor: r.idleWarnedFor) {
+            sendAlert(.idleSoon, record: r, readings: readings, exitCode: nil, config: config, until: at)
+            r.idleWarnedFor = at
+            try store.write(r)
+        }
         if let kind = Alerts.kindForTransition(wasHeld: r.held, decision: decision) {
             sendAlert(kind, record: r, readings: readings, exitCode: nil, config: config)
             if kind != .idle, config.notify { OsascriptNotifier().notify("Letting the Mac sleep (\(kind.rawValue)).") }
@@ -150,6 +157,9 @@ func statusCommand() -> Int32 {
             : h.effective ? "holding" : "NOT holding (sudo pmset failed, run `lidsomnia setup`)"
         var line = "  [\(h.pid)] \(state)"
         if !alive { line += " — DEAD, will be reaped" }
+        if let until = store.readExtension(pid: h.pid), until > now {
+            line += ", kept awake from phone for \(minutes(until.timeIntervalSince(now))) more"
+        }
         if h.adopted || h.kind == .codex {
             let last = lastAdoptedWrite(h)
             line += ", \(h.kind.rawValue)\(h.adopted ? " (auto-detected)" : ""), last session write "

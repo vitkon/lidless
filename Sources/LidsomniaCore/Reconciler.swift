@@ -44,6 +44,23 @@ public struct Reconciler {
         try withLock { try reconcileLocked() }
     }
 
+    /// Release one hold for the rest of its run (phone "Sleep now"), like `releaseAll` does.
+    @discardableResult
+    public func release(pid: Int32) throws -> ReconcileResult {
+        try withLock {
+            if var r = try store.read(pid: pid) {
+                if r.adopted {
+                    r.held = false
+                    r.reason = .manual
+                    try store.write(r)
+                } else {
+                    store.remove(pid: pid)
+                }
+            }
+            return try reconcileLocked()
+        }
+    }
+
     /// Panic button: drop every hold and turn sleep back on. Adopted holds are kept as
     /// manually released (not deleted) so the watchdog doesn't immediately re-adopt them.
     public func releaseAll() throws {

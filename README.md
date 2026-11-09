@@ -38,7 +38,9 @@ echo '{"alerts": {"ntfyTopic": "your-random-topic"}}' > ~/.lidsomnia/config.json
 lidsomnia test-alert
 ```
 
-You'll get a push when the battery runs low, the Mac gets hot, Claude goes idle, or a job of 5+ minutes finishes. A generic `webhookURL` is supported too. See the spec for all options.
+You'll get a push when the battery runs low, the Mac gets hot, Claude goes idle, or a job of 5+ minutes finishes.
+
+Five minutes before an idle session lets the Mac sleep, the alert has buttons: **Keep awake 1h** or **Sleep now**. Tap one and the Mac acts on it within a minute, then confirms. `lidsomnia test-alert` checks a button round trip too. A generic `webhookURL` is supported too. See the spec for all options.
 
 See [docs/spec.md](docs/spec.md) for the design and [docs/roadmap.md](docs/roadmap.md) for what's next.
 

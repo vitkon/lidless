@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import LidsomniaCore
 
@@ -39,12 +40,14 @@ enum AlertSender {
 }
 
 /// Send an alert for a hold to every configured channel; failures go to stderr only.
-func sendAlert(_ kind: AlertKind, record: HoldRecord, readings r: Readings, exitCode: Int32?, config: Config) {
+func sendAlert(_ kind: AlertKind, record: HoldRecord, readings r: Readings, exitCode: Int32?, config: Config,
+               until: Date? = nil) {
     guard config.alerts.isConfigured else { return }
     let event = AlertEvent(
         kind: kind, host: AlertSender.hostName(), command: record.command, pid: record.pid,
         exitCode: exitCode, durationSeconds: Int(Date().timeIntervalSince(record.startedAt)),
-        batteryPercent: r.batteryPercent, onBattery: r.onBattery, thermal: r.thermal, at: Date())
+        batteryPercent: r.batteryPercent, onBattery: r.onBattery, thermal: r.thermal, at: Date(),
+        until: until, startedAt: record.startedAt)
     do {
         for res in AlertSender.send(try Alerts.requests(for: event, config: config)) where !res.ok {
             stderrLine("alert to \(res.channel) failed: \(res.status.map { "HTTP \($0)" } ?? res.error ?? "unknown")")
@@ -54,7 +57,7 @@ func sendAlert(_ kind: AlertKind, record: HoldRecord, readings r: Readings, exit
     }
 }
 
-func testAlertCommand() -> Int32 {
+func testAlertCommand(wait: Bool = true) -> Int32 {
     let paths = LidsomniaPaths.standard()
     let config = Config.load(from: paths.config)
     guard config.alerts.isConfigured else {
@@ -69,8 +72,11 @@ func testAlertCommand() -> Int32 {
     let event = AlertEvent(kind: .test, host: AlertSender.hostName(), command: "lidsomnia test-alert",
                            pid: getpid(), exitCode: nil, durationSeconds: 0, batteryPercent: r.batteryPercent,
                            onBattery: r.onBattery, thermal: r.thermal, at: Date())
+    let token = UUID().uuidString.prefix(8).lowercased()
+    let sentAt = Int(Date().timeIntervalSince1970) - 5
+    let buttons = Control.actions([("Test button", .ping(String(token)))], config: config.alerts)
     do {
-        let results = AlertSender.send(try Alerts.requests(for: event, config: config))
+        let results = AlertSender.send(try Alerts.requests(for: event, config: config, ntfyActions: buttons))
         for res in results {
             if res.ok {
                 print("✓ \(res.channel) (\(res.status!))")
@@ -78,7 +84,21 @@ func testAlertCommand() -> Int32 {
                 print("✗ \(res.channel): \(res.status.map { "HTTP \($0)" } ?? res.error ?? "failed")")
             }
         }
-        return results.allSatisfy(\.ok) ? 0 : 1
+        guard results.allSatisfy(\.ok) else { return 1 }
+        guard !buttons.isEmpty, wait else { return 0 }
+        print("Tap \"Test button\" on the alert to check phone control (waiting up to 90 s, Ctrl-C to skip)…")
+        fflush(stdout)
+        let deadline = Date().addingTimeInterval(90)
+        while Date() < deadline {
+            let msgs = PhoneControl.fetch(config.alerts, since: String(sentAt)) ?? []
+            if msgs.contains(where: { ControlCommand.parse($0.body) == .ping(String(token)) }) {
+                print("✓ button tap received: phone control works")
+                return 0
+            }
+            Thread.sleep(forTimeInterval: 3)
+        }
+        print("✗ no tap received. Buttons post to ntfy topic \(Control.topic(config.alerts) ?? "?"); check the phone is online.")
+        return 1
     } catch {
         stderrLine("\(error)")
         return 1

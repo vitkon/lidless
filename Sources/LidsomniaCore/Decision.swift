@@ -8,9 +8,12 @@ public struct DecisionInput: Sendable {
     public var config: Config
     public var now: Date
     public var manuallyReleased: Bool
+    /// A phone "Keep awake" tap: no idle release before this.
+    public var extendedUntil: Date?
 
     public init(kind: HoldKind, startedAt: Date, activity: Activity?, readings: Readings,
-                config: Config, now: Date, manuallyReleased: Bool) {
+                config: Config, now: Date, manuallyReleased: Bool, extendedUntil: Date? = nil) {
+        self.extendedUntil = extendedUntil
         self.kind = kind
         self.startedAt = startedAt
         self.activity = activity
@@ -50,12 +53,17 @@ public func decide(_ i: DecisionInput) -> Decision {
     if i.readings.thermal >= i.config.thermalLimit {
         return Decision(held: false, reason: .thermal)
     }
-    if i.kind != .plain {
-        let state = i.activity?.state ?? .idle
-        let since = i.activity?.at ?? i.startedAt
-        if state == .idle, i.now.timeIntervalSince(since) >= i.config.idleTimeoutMinutes * 60 {
-            return Decision(held: false, reason: .idle)
-        }
+    if let at = idleReleaseAt(i), i.now >= at {
+        return Decision(held: false, reason: .idle)
     }
     return Decision(held: true, reason: .active)
+}
+
+/// When an idle agent session's hold gets released, if nothing happens before then.
+/// nil for plain commands and busy sessions.
+public func idleReleaseAt(_ i: DecisionInput) -> Date? {
+    guard i.kind != .plain, (i.activity?.state ?? .idle) == .idle else { return nil }
+    let since = i.activity?.at ?? i.startedAt
+    let at = since.addingTimeInterval(i.config.idleTimeoutMinutes * 60)
+    return max(at, i.extendedUntil ?? .distantPast)
 }

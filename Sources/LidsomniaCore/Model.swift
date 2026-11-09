@@ -66,6 +66,8 @@ public struct HoldRecord: Codable, Equatable, Sendable {
     public var adopted: Bool
     /// Working directory of an adopted session, used to find its transcripts.
     public var cwd: String?
+    /// The idle release time an `idleSoon` warning was last sent for.
+    public var idleWarnedFor: Date?
 
     public init(pid: Int32, childPid: Int32? = nil, command: String, kind: HoldKind,
                 startedAt: Date, held: Bool, reason: HoldReason, effective: Bool = true,
@@ -94,6 +96,7 @@ public struct HoldRecord: Codable, Equatable, Sendable {
         effective = try c.decodeIfPresent(Bool.self, forKey: .effective) ?? true
         adopted = try c.decodeIfPresent(Bool.self, forKey: .adopted) ?? false
         cwd = try c.decodeIfPresent(String.self, forKey: .cwd)
+        idleWarnedFor = try c.decodeIfPresent(Date.self, forKey: .idleWarnedFor)
     }
 }
 

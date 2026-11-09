@@ -149,8 +149,11 @@ With the lid shut you're on your phone, so a macOS notification is never seen. l
     "ntfyServer": "https://ntfy.sh",
     "ntfyToken": "tk_…",
     "webhookURL": "https://example.com/hook",
-    "events": ["lowBattery", "thermal", "idle", "finished"],
-    "finishedMinMinutes": 5
+    "events": ["lowBattery", "thermal", "idleSoon", "idle", "finished"],
+    "finishedMinMinutes": 5,
+    "idleWarningMinutes": 5,
+    "phoneControl": true,
+    "controlTopic": "a-long-random-topic-control"
   }
 }
 ```
@@ -159,6 +162,7 @@ All keys are optional; alerts are off until `ntfyTopic` or `webhookURL` is set.
 
 | Event | Sent when |
 |---|---|
+| `idleSoon` | `idleWarningMinutes` before an idle release (once per release time), with phone buttons |
 | `lowBattery`, `thermal`, `idle` | a hold goes from held to released for that reason |
 | `finished` | the wrapped command exits after running at least `finishedMinMinutes`; includes exit code and duration |
 | `test` | `lidsomnia test-alert` (ignores `events`) |
@@ -167,6 +171,21 @@ All keys are optional; alerts are off until `ntfyTopic` or `webhookURL` is set.
 - **Webhook** receives the event as JSON (`kind`, `host`, `command`, `pid`, `exitCode`, `durationSeconds`, `batteryPercent`, `onBattery`, `thermal`, `at`) plus `title` and `message`.
 - **Ordering:** alerts are sent synchronously (5 s timeout per request) **before** the hold is released, because with the lid shut the Mac sleeps right after and the request would never leave.
 - Failures are logged to stderr and never affect the wrapped command.
+
+## Phone control (v2.2.0)
+
+Alert buttons that act on the Mac. A button can't usefully appear on the `idle` alert itself: by then the hold is released and a closed Mac is asleep within seconds. So the buttons go on the `idleSoon` warning, sent while there's still time:
+
+> **Claude idle on MacBook: sleeping in 5 min** · [Keep awake 1h] [Sleep now]
+
+- **Transport.** Buttons are ntfy `http` actions. The phone POSTs a one-line command straight to a second topic, `controlTopic` (default `<ntfyTopic>-control`); `ntfyToken` is passed along as a header. No server, no extra app.
+- **Commands.** `extend <pid> <startedAt> <minutes>` (1–240) and `sleep <pid> <startedAt>`, plus `ping <token>` for `test-alert`. A hold is named by pid *and* start time, so a late tap can't hit a later job that reused the pid. Anything else is ignored.
+- **Pickup.** The watchdog polls the control topic (`GET …/json?poll=1&since=<last id>`) on each 60 s run, but only while holds exist. Taps older than 15 minutes are dropped. The cursor lives in `~/.lidsomnia/control-since`, so each tap is applied once.
+- **Keep awake** writes `holds/<pid>.extend`; the decision then won't release for idle before that time (battery and heat still win). The wrapper is woken with `SIGUSR1`. A fresh `idleSoon` warning goes out before the extension runs out, so you can extend again.
+- **Sleep now** releases that hold for the rest of its run (like `release`). If nothing else holds the Mac awake, it runs `pmset sleepnow`.
+- **Confirmations.** `extended`, `sleeping` or `released` is pushed back so you know the tap landed. These ignore `events`.
+- **Trust model.** The control topic appears in the alerts' button URLs, so anyone who can read your alert topic can send commands. Keep the topic long and random, the same as for alerts. The worst they can do is keep the Mac awake for up to 4 hours (still within the battery and heat limits) or put it to sleep. Set `"phoneControl": false` to turn buttons off.
+- **`test-alert`** adds a "Test button" and waits up to 90 s for your tap, checking the whole round trip (`--no-wait` to skip).
 
 ## Privilege model
 

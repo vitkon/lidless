@@ -44,6 +44,17 @@ public struct HoldStore: Sendable {
 
     public func holdURL(pid: Int32) -> URL { paths.holds.appendingPathComponent("\(pid).json") }
     public func activityURL(pid: Int32) -> URL { paths.holds.appendingPathComponent("\(pid).activity") }
+    /// Written by the watchdog when a phone "Keep awake" tap arrives: the extension's end.
+    public func extensionURL(pid: Int32) -> URL { paths.holds.appendingPathComponent("\(pid).extend") }
+
+    public func writeExtension(pid: Int32, until: Date) throws {
+        try Self.encoder.encode(["until": until]).write(to: extensionURL(pid: pid), options: .atomic)
+    }
+
+    public func readExtension(pid: Int32) -> Date? {
+        guard let data = try? Data(contentsOf: extensionURL(pid: pid)) else { return nil }
+        return (try? Self.decoder.decode([String: Date].self, from: data))?["until"]
+    }
 
     public func write(_ record: HoldRecord) throws {
         try Self.encoder.encode(record).write(to: holdURL(pid: record.pid), options: .atomic)
@@ -70,6 +81,7 @@ public struct HoldStore: Sendable {
     public func remove(pid: Int32) {
         try? FileManager.default.removeItem(at: holdURL(pid: pid))
         try? FileManager.default.removeItem(at: activityURL(pid: pid))
+        try? FileManager.default.removeItem(at: extensionURL(pid: pid))
     }
 
     public func writeActivity(_ activity: Activity, to url: URL) throws {
