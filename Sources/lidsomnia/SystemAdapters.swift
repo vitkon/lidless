@@ -61,6 +61,7 @@ struct SystemReadings: PowerReadingsSource {
     func read() -> Readings {
         var onBattery = false
         var percent: Int?
+        var toEmpty: Int?
         if let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue() {
             if let type = IOPSGetProvidingPowerSourceType(info)?.takeUnretainedValue() as String? {
                 onBattery = type == "Battery Power"
@@ -73,9 +74,11 @@ struct SystemReadings: PowerReadingsSource {
                       let max = desc["Max Capacity"] as? Int, max > 0
                 else { continue }
                 percent = cur * 100 / max
+                if let t = desc["Time to Empty"] as? Int, t > 0 { toEmpty = t }  // -1 while calculating
             }
         }
-        return Readings(onBattery: onBattery, batteryPercent: percent, thermal: Self.thermal())
+        return Readings(onBattery: onBattery, batteryPercent: percent, thermal: Self.thermal(),
+                        minutesToEmpty: onBattery ? toEmpty : nil)
     }
 
     static func thermal() -> ThermalLevel {

@@ -21,7 +21,7 @@ private func config(_ alerts: String) throws -> Config {
     @Test func alertsOffByDefault() {
         let c = Config()
         #expect(!c.alerts.isConfigured)
-        #expect(c.alerts.events == [.lowBattery, .thermal, .idleSoon, .idle, .finished])
+        #expect(c.alerts.events == [.lowBattery, .batterySoon, .thermal, .idleSoon, .idle, .finished])
         #expect(c.alerts.finishedMinMinutes == 5)
         #expect(c.alerts.ntfyServer == "https://ntfy.sh")
     }

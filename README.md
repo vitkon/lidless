@@ -49,7 +49,7 @@ lidsomnia test-alert
 
 You'll get a push when the battery runs low, the Mac gets hot, Claude goes idle, or a job of 5+ minutes finishes.
 
-Five minutes before an idle session lets the Mac sleep, the alert has buttons: **Keep awake 1h** or **Sleep now**. Tap one and the Mac acts on it within a minute, then confirms. `lidsomnia test-alert` checks a button round trip too. A generic `webhookURL` is supported too. See the spec for all options.
+Five minutes before an idle session lets the Mac sleep, the alert has buttons: **Keep awake 1h** or **Sleep now**. About 15 minutes before the battery floor, you get a warning with **Sleep now**, and `lidsomnia status` shows the time left ("about 2h10m to the 10% floor"). Tap one and the Mac acts on it within a minute, then confirms. `lidsomnia test-alert` checks a button round trip too. A generic `webhookURL` is supported too. See the spec for all options.
 
 See [docs/spec.md](docs/spec.md) for the design and [docs/roadmap.md](docs/roadmap.md) for what's next.
 

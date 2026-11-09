@@ -46,6 +46,7 @@ func reapCommand() -> Int32 {
     let config = Config.load(from: paths.config)
     let stamp = ISO8601DateFormatter().string(from: Date())
     applyPhoneControl(reconciler: reconciler, config: config, paths: paths, stamp: stamp)
+    warnBeforeLowBattery(store: store, probe: probe, config: config, paths: paths, stamp: stamp)
     do {
         let holds = store.list()
         if config.autoDetect || holds.contains(where: \.adopted) {
@@ -73,6 +74,28 @@ func reapCommand() -> Int32 {
         stderrLine("\(error)")
         return 1
     }
+}
+
+/// One phone warning per discharge, before the battery floor releases every hold. Machine-wide,
+/// so it lives here rather than in each wrapper.
+func warnBeforeLowBattery(store: HoldStore, probe: ProcessProbe, config: Config, paths: LidsomniaPaths, stamp: String) {
+    let marker = paths.home.appendingPathComponent("battery-warned")
+    let r = SystemReadings().read()
+    let held = store.list().filter { $0.held && probe.isLive($0) }
+    if Battery.shouldRearm(r, holding: !held.isEmpty) {
+        try? FileManager.default.removeItem(at: marker)
+        return
+    }
+    let warned = FileManager.default.fileExists(atPath: marker.path)
+    guard Battery.warningDue(r, config: config, holding: true, alreadyWarned: warned),
+          let left = Battery.minutesToFloor(r, floor: config.batteryFloorPercent), let first = held.first
+    else { return }
+    FileManager.default.createFile(atPath: marker.path, contents: nil)
+    print("\(stamp) battery: about \(left)m to the \(config.batteryFloorPercent)% floor, warned")
+    var job = first
+    if held.count > 1 { job.command = "\(held.count) jobs" }
+    sendAlert(.batterySoon, record: job, readings: r, exitCode: nil, config: config,
+              until: Date().addingTimeInterval(Double(left) * 60))
 }
 
 /// Adopted sessions have no hooks; their activity is the newest transcript/session-file write
@@ -138,8 +161,10 @@ func statusCommand() -> Int32 {
     let probe = SystemProcessProbe()
     let r = SystemReadings().read()
     let disabled = (try? PmsetPowerControl().sleepDisabled()).map { $0 ? "1 (Mac stays awake)" : "0 (normal)" } ?? "unknown"
-    let battery = r.batteryPercent.map { "\($0)%" } ?? "n/a"
     let config = Config.load(from: paths.config)
+    let estimate = Battery.minutesToFloor(r, floor: config.batteryFloorPercent)
+        .map { ", about \(Battery.format($0)) to the \(config.batteryFloorPercent)% floor" } ?? ""
+    let battery = (r.batteryPercent.map { "\($0)%" } ?? "n/a") + estimate
 
     print("SleepDisabled  \(disabled)")
     print("power          \(r.onBattery ? "battery" : "AC"), \(battery), thermal \(r.thermal.rawValue)")

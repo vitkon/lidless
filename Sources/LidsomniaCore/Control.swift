@@ -7,6 +7,8 @@ public enum ControlCommand: Equatable, Sendable {
     case extend(pid: Int32, startedAt: Int, minutes: Int)
     case sleep(pid: Int32, startedAt: Int)
     case ping(String)
+    /// Release every hold and sleep (the battery warning's button; it isn't about one job).
+    case sleepAll
 
     public static let maxExtendMinutes = 240
 
@@ -15,6 +17,7 @@ public enum ControlCommand: Equatable, Sendable {
         case let .extend(pid, startedAt, minutes): return "extend \(pid) \(startedAt) \(minutes)"
         case let .sleep(pid, startedAt): return "sleep \(pid) \(startedAt)"
         case let .ping(token): return "ping \(token)"
+        case .sleepAll: return "sleep-all"
         }
     }
 
@@ -30,6 +33,8 @@ public enum ControlCommand: Equatable, Sendable {
             return .sleep(pid: pid, startedAt: s)
         case ("ping", 2):
             return .ping(w[1])
+        case ("sleep-all", 1):
+            return .sleepAll
         default:
             return nil
         }
@@ -53,6 +58,7 @@ public enum ControlEffect: Equatable, Sendable {
     case extend(pid: Int32, until: Date)
     case sleep(pid: Int32)
     case ping(String)
+    case sleepAll
 }
 
 public enum Control {
@@ -123,6 +129,8 @@ public enum Control {
                 return hold(pid, s).map { _ in .sleep(pid: pid) }
             case let .ping(token):
                 return .ping(token)
+            case .sleepAll:
+                return holds.isEmpty ? nil : .sleepAll
             }
         }
     }

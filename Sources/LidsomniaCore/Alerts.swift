@@ -4,6 +4,8 @@ public enum AlertKind: String, Codable, CaseIterable, Sendable {
     case lowBattery, thermal, idle, finished, test
     /// Warning a few minutes before an idle release, with Keep awake / Sleep now buttons.
     case idleSoon
+    /// Warning before a low-battery release, with a Sleep now button.
+    case batterySoon
     /// Confirmations of a button tap; always sent, like `test`.
     case extended, sleeping, released
 }
@@ -14,11 +16,13 @@ public struct AlertConfig: Codable, Equatable, Sendable {
     public var ntfyServer: String = "https://ntfy.sh"
     public var ntfyToken: String?
     public var webhookURL: String?
-    public var events: [AlertKind] = [.lowBattery, .thermal, .idleSoon, .idle, .finished]
+    public var events: [AlertKind] = [.lowBattery, .batterySoon, .thermal, .idleSoon, .idle, .finished]
     /// `finished` is only sent for jobs that ran at least this long.
     public var finishedMinMinutes: Double = 5
     /// `idleSoon` is sent this long before an idle release; 0 turns it off.
     public var idleWarningMinutes: Double = 5
+    /// `batterySoon` is sent when the battery is estimated to reach the floor within this; 0 turns it off.
+    public var batteryWarningMinutes: Double = 15
     /// Buttons on ntfy alerts that act on the Mac (via the control topic).
     public var phoneControl: Bool = true
     /// Topic the buttons post to; defaults to `<ntfyTopic>-control`.
@@ -36,6 +40,7 @@ public struct AlertConfig: Codable, Equatable, Sendable {
         events = try c.decodeIfPresent([AlertKind].self, forKey: .events) ?? d.events
         finishedMinMinutes = try c.decodeIfPresent(Double.self, forKey: .finishedMinMinutes) ?? d.finishedMinMinutes
         idleWarningMinutes = try c.decodeIfPresent(Double.self, forKey: .idleWarningMinutes) ?? d.idleWarningMinutes
+        batteryWarningMinutes = try c.decodeIfPresent(Double.self, forKey: .batteryWarningMinutes) ?? d.batteryWarningMinutes
         phoneControl = try c.decodeIfPresent(Bool.self, forKey: .phoneControl) ?? d.phoneControl
         controlTopic = try c.decodeIfPresent(String.self, forKey: .controlTopic)
     }
@@ -135,6 +140,14 @@ public enum Alerts {
                 title: "Battery low on \(e.host)",
                 body: "Battery is at \(pct). The Mac will sleep now so your work can resume once it's plugged in. Job: \(job)",
                 priority: 4, tags: ["battery"])
+        case .batterySoon:
+            let pct = e.batteryPercent.map { "\($0)%" } ?? "low"
+            let left = e.until.map { "about \(formatDuration(Int($0.timeIntervalSince(e.at))))" } ?? "soon"
+            let tail = Control.topic(config.alerts) != nil ? " Plug it in to keep going, or let it sleep now." : " Plug it in to keep going."
+            return AlertMessage(
+                title: "Battery low soon on \(e.host): \(left) left",
+                body: "Battery is at \(pct). The Mac will sleep at \(config.batteryFloorPercent)%.\(tail)",
+                priority: 4, tags: ["battery"])
         case .thermal:
             return AlertMessage(
                 title: "\(e.host) is running hot",
@@ -200,6 +213,9 @@ public enum Alerts {
             var actions = ntfyActions ?? []
             if ntfyActions == nil, e.kind == .idleSoon, let s = e.startedAt {
                 actions = Control.idleSoonActions(pid: e.pid, startedAt: s, config: a)
+            }
+            if ntfyActions == nil, e.kind == .batterySoon {
+                actions = Control.actions([("Sleep now", .sleepAll)], config: a)
             }
             if !actions.isEmpty { payload["actions"] = actions }
             var r = jsonPost(url, payload)

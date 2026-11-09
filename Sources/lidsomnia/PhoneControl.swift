@@ -68,6 +68,17 @@ func applyPhoneControl(reconciler: Reconciler, config: Config, paths: LidsomniaP
             } catch {
                 stderrLine("couldn't release [\(pid)]: \(error)")
             }
+        case .sleepAll:
+            do {
+                try reconciler.releaseAll()
+                print("\(stamp) phone: released all holds")
+                for r in holds where !r.adopted { kill(r.pid, SIGUSR1) }
+                let all = HoldRecord(pid: 0, command: "all jobs", kind: .plain, startedAt: now, held: false, reason: .manual)
+                sendAlert(.sleeping, record: all, readings: readings, exitCode: nil, config: config)
+                try reconciler.power.sleepNow()
+            } catch {
+                stderrLine("couldn't release all: \(error)")
+            }
         case .ping:
             break  // only `test-alert` cares
         }

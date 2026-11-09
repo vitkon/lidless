@@ -47,9 +47,13 @@ Other apps already use the name lidless. Old installs keep working: Homebrew mig
 
 Opt-in busy/idle hooks in `~/.codex/hooks.json`, approved once with `/hooks`. Each hook finds its hold by walking up its parent processes, so it works for wrapped and auto-detected sessions alike. `doctor` shows whether they're approved and running. Details in [spec.md](spec.md#codex-hooks-v220-opt-in).
 
-## Next: battery estimate
+## v2.3.0: battery estimate (done)
 
-Show the time left until the battery floor at the current drain in `status` and alerts, and warn on the phone before a low-battery release, the same way `idleSoon` warns before an idle one.
+`status` and `doctor` show the time left until the battery floor, scaled from macOS's time-to-empty estimate. A `batterySoon` warning goes to the phone once per discharge, `batteryWarningMinutes` (15) before the floor, with a **Sleep now** button that releases every hold. There's no keep-awake button: the floor is a safety limit. Details in [spec.md](spec.md#battery-estimate-v230).
+
+## Next: run reports
+
+When a job ends, the `finished` alert also says how long the Mac was held, how much battery it used, and whether it was released early and why.
 
 ## Later / maybe
 

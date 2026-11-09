@@ -289,7 +289,7 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
     </svg>
 <pre class="status" aria-label="Example output of lidsomnia status"><span class="k">$ lidsomnia status</span>
 <span class="k">SleepDisabled</span>  <span class="on">1 (Mac stays awake)</span>
-<span class="k">power</span>          battery, 64%, thermal nominal
+<span class="k">power</span>          battery, 64%, about 3h40m to the 10% floor, thermal nominal
 <span class="k">holds</span>
   [4812] holding, claude busy for 3m
          claude --remote-control</pre>
@@ -332,7 +332,7 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
     </div>
     <ol class="order">
       <li><b>You pressed release</b><span>Running <code>lidsomnia release</code> lets the Mac sleep for the rest of that run.</span></li>
-      <li><b>Battery is nearly empty</b><span>On battery at 10% or less, the Mac is allowed to sleep, so it can resume later instead of shutting down.</span></li>
+      <li><b>Battery is nearly empty</b><span>On battery at 10% or less, the Mac is allowed to sleep, so it can resume later instead of shutting down. Your phone gets a warning about 15 minutes before.</span></li>
       <li><b>The chip is running hot</b><span>If macOS reports serious thermal pressure, lidsomnia lets go until things cool down.</span></li>
       <li><b>The agent has been idle for 30 minutes</b><span>The session keeps running. Send a new prompt and the Mac is held awake again.</span></li>
       <li><b>Otherwise, stay awake</b><span>The job is active, so the Mac stays on.</span></li>

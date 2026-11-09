@@ -77,7 +77,8 @@ public enum Doctor {
     static let configKeys: Set<String> = ["idleTimeoutMinutes", "batteryFloorPercent", "thermalLimit", "notify",
                                           "alerts", "autoDetect"]
     static let alertKeys: Set<String> = ["ntfyTopic", "ntfyServer", "ntfyToken", "webhookURL", "events",
-                                         "finishedMinMinutes", "idleWarningMinutes", "phoneControl", "controlTopic"]
+                                         "finishedMinMinutes", "idleWarningMinutes", "batteryWarningMinutes",
+                                         "phoneControl", "controlTopic"]
 
     /// Keys lidsomnia doesn't know (usually typos), as `key` or `alerts.key`, sorted.
     public static func unknownKeys(in data: Data) -> [String] {
@@ -199,7 +200,9 @@ public enum Doctor {
         let battery = r.batteryPercent.map { "\($0)%" } ?? "n/a"
         let lowBattery = r.onBattery && (r.batteryPercent ?? 100) <= f.config.batteryFloorPercent
         let hot = r.thermal >= f.config.thermalLimit
-        let summary = "\(r.onBattery ? "battery" : "AC"), \(battery), thermal \(r.thermal.rawValue)"
+        let estimate = Battery.minutesToFloor(r, floor: f.config.batteryFloorPercent)
+            .map { ", about \(Battery.format($0)) to the \(f.config.batteryFloorPercent)% floor" } ?? ""
+        let summary = "\(r.onBattery ? "battery" : "AC"), \(battery)\(estimate), thermal \(r.thermal.rawValue)"
         if lowBattery || hot {
             add("power", .warn, summary + (lowBattery ? "; battery is at the floor, holds will be released"
                                                       : "; running hot, holds will be released"))

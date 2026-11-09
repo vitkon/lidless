@@ -37,11 +37,15 @@ public struct Readings: Equatable, Sendable {
     /// nil when the machine has no battery or it can't be read.
     public var batteryPercent: Int?
     public var thermal: ThermalLevel
+    /// macOS's estimate of minutes left on battery at the current load; nil on AC or while
+    /// it's still calculating.
+    public var minutesToEmpty: Int?
 
-    public init(onBattery: Bool, batteryPercent: Int?, thermal: ThermalLevel) {
+    public init(onBattery: Bool, batteryPercent: Int?, thermal: ThermalLevel, minutesToEmpty: Int? = nil) {
         self.onBattery = onBattery
         self.batteryPercent = batteryPercent
         self.thermal = thermal
+        self.minutesToEmpty = minutesToEmpty
     }
 }
 

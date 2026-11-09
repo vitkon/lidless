@@ -1,1 +1,1 @@
-let lidsomniaVersion = "2.2.0"
+let lidsomniaVersion = "2.3.0"

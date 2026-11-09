@@ -158,9 +158,10 @@ With the lid shut you're on your phone, so a macOS notification is never seen. l
     "ntfyServer": "https://ntfy.sh",
     "ntfyToken": "tk_…",
     "webhookURL": "https://example.com/hook",
-    "events": ["lowBattery", "thermal", "idleSoon", "idle", "finished"],
+    "events": ["lowBattery", "batterySoon", "thermal", "idleSoon", "idle", "finished"],
     "finishedMinMinutes": 5,
     "idleWarningMinutes": 5,
+    "batteryWarningMinutes": 15,
     "phoneControl": true,
     "controlTopic": "a-long-random-topic-control"
   }
@@ -172,6 +173,7 @@ All keys are optional; alerts are off until `ntfyTopic` or `webhookURL` is set.
 | Event | Sent when |
 |---|---|
 | `idleSoon` | `idleWarningMinutes` before an idle release (once per release time), with phone buttons |
+| `batterySoon` | the battery is estimated to reach the floor within `batteryWarningMinutes` while something is held (once per discharge), with a Sleep now button |
 | `lowBattery`, `thermal`, `idle` | a hold goes from held to released for that reason |
 | `finished` | the wrapped command exits after running at least `finishedMinMinutes`; includes exit code and duration |
 | `test` | `lidsomnia test-alert` (ignores `events`) |
@@ -195,6 +197,12 @@ Alert buttons that act on the Mac. A button can't usefully appear on the `idle` 
 - **Confirmations.** `extended`, `sleeping` or `released` is pushed back so you know the tap landed. These ignore `events`.
 - **Trust model.** The control topic appears in the alerts' button URLs, so anyone who can read your alert topic can send commands. Keep the topic long and random, the same as for alerts. The worst they can do is keep the Mac awake for up to 4 hours (still within the battery and heat limits) or put it to sleep. Set `"phoneControl": false` to turn buttons off.
 - **`test-alert`** adds a "Test button" and waits up to 90 s for your tap, checking the whole round trip (`--no-wait` to skip).
+
+## Battery estimate (v2.3.0)
+
+- **Estimate.** macOS reports minutes to empty at the current load (`Time to Empty` from IOKit power sources; unavailable on AC and while it's calculating). lidsomnia scales it to the floor: `minutesToEmpty × (percent − floor) / percent`. `status` and `doctor` show it as "about 2h10m to the 10% floor".
+- **Warning.** On each 60 s run the watchdog sends one `batterySoon` alert when something is held and the estimate is within `batteryWarningMinutes` (default 15; 0 turns it off). It's machine-wide, so there's one alert however many jobs are held. `~/.lidsomnia/battery-warned` records it; it re-arms when the Mac is on AC or nothing is held.
+- **Button.** **Sleep now** posts `sleep-all`: every hold is released (like `release`), a `sleeping` confirmation is sent, then `pmset sleepnow`. There's no keep-awake button, because the battery floor is a safety limit; plug in to keep going.
 
 ## Privilege model
 
