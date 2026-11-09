@@ -68,6 +68,12 @@ func doctorCommand() -> Int32 {
         unknownConfigKeys: configData.map(Doctor.unknownKeys(in:)) ?? [], alertsError: alertsError,
         claudeVersion: claudeVersion, readings: SystemReadings().read(), config: config)
     facts.codexVersion = codexVersion
+    if let root = try? readCodexHooksFile(), let bin = CodexHooks.installedBinary(in: root) {
+        facts.codexHooksBinary = bin
+        facts.codexHooksBinaryExists = FileManager.default.isExecutableFile(atPath: bin)
+        let seen = try? FileManager.default.attributesOfItem(atPath: codexHooksSeenURL(paths).path)[.modificationDate] as? Date
+        facts.codexHooksLastRanAgo = seen.map { Date().timeIntervalSince($0) }
+    }
 
     let checks = Doctor.evaluate(facts)
     print("lidsomnia \(lidsomniaVersion) doctor\n")

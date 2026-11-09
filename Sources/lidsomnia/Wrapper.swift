@@ -131,15 +131,16 @@ final class Wrapper {
         wroteOnce = true
     }
 
-    /// Claude reports through hooks; Codex hooks need per-hook approval, so its activity is the
-    /// newest write to its session files (never earlier than our start).
+    /// Claude reports through per-run hooks. Codex reports through hooks installed by
+    /// `setup --codex-hooks` when approved, otherwise through its session-file writes.
     func currentActivity() -> Activity? {
         switch record.kind {
         case .claude:
             return store.readActivity(pid: record.pid)
         case .codex:
-            let last = AutoDetect.latestCodexWrite(cwd: record.cwd, since: record.startedAt) ?? record.startedAt
-            return Activity(state: .idle, at: max(last, record.startedAt))
+            return CodexHooks.activity(hook: store.readActivity(pid: record.pid),
+                                       lastWrite: AutoDetect.latestCodexWrite(cwd: record.cwd, since: record.startedAt),
+                                       startedAt: record.startedAt)
         case .plain:
             return nil
         }

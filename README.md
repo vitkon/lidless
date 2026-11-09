@@ -29,6 +29,15 @@ Config is in `~/.lidsomnia/config.json`. Every key is optional:
 
 Add `"autoDetect": true` to the config and the watchdog also keeps the Mac awake for Claude Code and Codex sessions started without lidsomnia, including `claude --bg`, `codex remote-control` and Codex in VS Code. Idle time is judged from the session's transcript writes, with the same 30-minute timeout.
 
+### Codex hooks (optional)
+
+Codex idle time is judged from its session files, which can miss a single long-running command. For hook-level precision:
+
+```sh
+lidsomnia setup --codex-hooks   # adds busy/idle hooks to ~/.codex/hooks.json
+codex                           # then /hooks, and trust the lidsomnia hooks once
+```
+
 ### Phone alerts
 
 Install the [ntfy](https://ntfy.sh) app, subscribe to a long random topic, then:

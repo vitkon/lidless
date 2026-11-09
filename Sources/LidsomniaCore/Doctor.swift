@@ -39,6 +39,11 @@ public struct DoctorFacts: Sendable {
     public var alertsError: String?
     public var claudeVersion: String?
     public var codexVersion: String? = nil
+    /// Binary the installed Codex hooks run; nil when they aren't installed.
+    public var codexHooksBinary: String? = nil
+    public var codexHooksBinaryExists: Bool = true
+    /// How long ago a Codex hook last ran; nil if never (not yet approved in `/hooks`).
+    public var codexHooksLastRanAgo: TimeInterval? = nil
     public var readings: Readings
     public var config: Config
 
@@ -172,6 +177,22 @@ public enum Doctor {
         default:
             if let v = f.claudeVersion { add("claude", .ok, v) }
             if let v = f.codexVersion { add("codex", .ok, v) }
+        }
+
+        if f.codexVersion != nil {
+            let hooksFix = "lidsomnia setup --codex-hooks"
+            if let bin = f.codexHooksBinary {
+                if !f.codexHooksBinaryExists {
+                    add("codex hooks", .fail, "run \(bin), which no longer exists", fix: hooksFix)
+                } else if let ago = f.codexHooksLastRanAgo {
+                    add("codex hooks", .ok, "approved and running (last ran \(Int(ago / 60))m ago)")
+                } else {
+                    add("codex hooks", .warn, "installed but haven't run yet: approve them once in Codex",
+                        fix: "codex, then type /hooks and trust the lidsomnia hooks")
+                }
+            } else {
+                add("codex hooks", .ok, "off: Codex idle time is judged from session files", fix: hooksFix)
+            }
         }
 
         let r = f.readings

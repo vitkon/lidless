@@ -1,5 +1,6 @@
 import Darwin
 import Foundation
+import LidsomniaCore
 
 let usage = """
 lidsomnia \(lidsomniaVersion) — keep your Mac awake (even with the lid closed) while a job runs
@@ -7,6 +8,7 @@ lidsomnia \(lidsomniaVersion) — keep your Mac awake (even with the lid closed)
 usage:
   lidsomnia [--sleep-after] <command> [args…]   run a command and hold the Mac awake while it's active
   lidsomnia setup [--agent-only]                install the sudoers rule and watchdog (once)
+  lidsomnia setup --codex-hooks                 add busy/idle hooks to Codex (approve once with /hooks)
   lidsomnia uninstall                           remove them and re-enable sleep
   lidsomnia status                              show holds, power and setup state
   lidsomnia release                             drop all holds now (panic button)
@@ -57,7 +59,8 @@ case "-v", "--version", "version":
     print("lidsomnia \(lidsomniaVersion)")
     exit(0)
 case "setup":
-    expectArgs(rest, allowed: ["--agent-only"], for: "setup")
+    expectArgs(rest, allowed: ["--agent-only", "--codex-hooks"], for: "setup")
+    if rest.contains("--codex-hooks") { exit(installCodexHooksCommand()) }
     exit(setupCommand(agentOnly: rest.contains("--agent-only")))
 case "uninstall":
     expectArgs(rest, for: "uninstall")
@@ -78,6 +81,9 @@ case "reap":
     expectArgs(rest, for: "reap")
     exit(reapCommand())
 case "hook":
+    if rest.count == 2, rest[0] == "codex" {
+        exit(ActivityState(rawValue: rest[1]).map(codexHookCommand) ?? 0)
+    }
     guard rest.count == 1, rest[0] == "busy" || rest[0] == "idle" else { exit(0) }  // never break claude
     exit(hookCommand(rest[0]))
 default:

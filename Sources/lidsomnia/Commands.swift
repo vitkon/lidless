@@ -88,8 +88,11 @@ func evaluateAdopted(reconciler: Reconciler, probe: ProcessProbe, config: Config
     let readings = SystemReadings().read()
     for var r in store.list() where r.adopted && probe.isLive(r) {
         let lastWrite = lastAdoptedWrite(r) ?? r.startedAt
+        let activity = r.kind == .codex
+            ? CodexHooks.activity(hook: store.readActivity(pid: r.pid), lastWrite: lastWrite, startedAt: r.startedAt)
+            : Activity(state: .idle, at: max(lastWrite, r.startedAt))
         let input = DecisionInput(
-            kind: r.kind, startedAt: r.startedAt, activity: Activity(state: .idle, at: max(lastWrite, r.startedAt)),
+            kind: r.kind, startedAt: r.startedAt, activity: activity,
             readings: readings, config: config, now: Date(),
             manuallyReleased: r.reason == .manual && !r.held, extendedUntil: store.readExtension(pid: r.pid))
         let decision = decide(input)
@@ -160,7 +163,9 @@ func statusCommand() -> Int32 {
         if let until = store.readExtension(pid: h.pid), until > now {
             line += ", kept awake from phone for \(minutes(until.timeIntervalSince(now))) more"
         }
-        if h.adopted || h.kind == .codex {
+        if h.kind == .codex, let a = store.readActivity(pid: h.pid) {
+            line += ", codex\(h.adopted ? " (auto-detected)" : "") \(a.state.rawValue) for \(minutes(now.timeIntervalSince(a.at))) (hooks)"
+        } else if h.adopted || h.kind == .codex {
             let last = lastAdoptedWrite(h)
             line += ", \(h.kind.rawValue)\(h.adopted ? " (auto-detected)" : ""), last session write "
                 + (last.map { minutes(now.timeIntervalSince($0)) + " ago" } ?? "none since start")
@@ -275,6 +280,8 @@ func uninstallCommand() -> Int32 {
     _ = try? shell("/bin/launchctl", ["bootout", "gui/\(getuid())/\(agentLabel)"])
     try? FileManager.default.removeItem(at: agentPlistURL)
     print("✓ watchdog removed")
+
+    if removeCodexHooks() { print("✓ codex hooks removed from \(codexHooksURL.path)") }
 
     let (reconciler, _) = makeReconciler()
     do {

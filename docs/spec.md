@@ -108,7 +108,16 @@ On a transition from held → released for `lowBattery` or `thermal`, send a mac
 - **Same timeout and rules** as Claude: `idleTimeoutMinutes`, battery, thermal, alerts.
 - **Detected processes:** binaries launched as `codex` (Homebrew, standalone, the VS Code extension's `app-server`) or node running `@openai/codex`. `codex remote-control start` daemonizes, so it can only be covered by auto-detect; the wrapper warns about it.
 - **Detection uses `argv[0]` when readable:** both agents' native binaries re-execute themselves under other names for helpers (Claude Code runs its bundled `ugrep`; Codex runs `apply_patch`), and those must not be adopted as sessions. Processes whose parent is an agent are skipped as helpers.
-- Possible later: `lidsomnia setup --codex-hooks` to install hooks into `~/.codex/hooks.json` once, which you approve in Codex's hook review, for hook-level precision.
+
+### Codex hooks (v2.2.0, opt-in)
+
+Session files miss one case: a single long command with no session writes looks idle and can be released mid-task. `lidsomnia setup --codex-hooks` adds hooks for hook-level precision:
+
+- **Install:** merges six handlers into `$CODEX_HOME/hooks.json` (default `~/.codex`), keeping any hooks already there and backing the file up once to `hooks.json.bak`. `UserPromptSubmit`, `PreToolUse` and `PostToolUse` run `lidsomnia hook codex busy`; `Stop`, `Interrupt` and `SessionEnd` run `lidsomnia hook codex idle` (3 s timeout). Re-running replaces them; `uninstall` removes them.
+- **Approval:** Codex skips new hooks until you trust them once with `/hooks` (trust is tied to each hook's hash, so the command uses the stable Homebrew path, not the Cellar). lidsomnia never bypasses this.
+- **Finding the hold:** the hooks are global, so the hook walks up its parent processes until it reaches a held Codex process, which is the hold's `childPid` for wrapped runs or the hold's own pid for auto-detected ones. No environment variables are needed, and hooks from unrelated Codex sessions do nothing. Output is silent, because Codex can parse hook stdout.
+- **Activity:** a `busy` hook keeps the session busy until an idle hook. Otherwise the newest of the idle hook, session writes and the hold's start counts, so sessions without approved hooks fall back to session files as before. A busy hook on an idle-released hold wakes the wrapper (`SIGUSR1`).
+- **Doctor:** each hook run touches `~/.lidsomnia/codex-hooks-seen`, so `doctor` can tell "installed but not approved yet" from "approved and running".
 
 ## Doctor (v2.0.3)
 

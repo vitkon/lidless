@@ -43,11 +43,13 @@ Other apps already use the name lidless. Old installs keep working: Homebrew mig
 
 `idleSoon` warning five minutes before an idle release, with **Keep awake 1h** and **Sleep now** buttons (ntfy actions → control topic → watchdog). Tap confirmations; `test-alert` checks a button round trip. Details in [spec.md](spec.md#phone-control-v220).
 
-## Next: `lidsomnia setup --codex-hooks`
+## v2.2.0: `lidsomnia setup --codex-hooks` (done)
 
-**Problem.** Session-file activity is less precise than hooks: a long single command with no session writes can be released mid-task.
+Opt-in busy/idle hooks in `~/.codex/hooks.json`, approved once with `/hooks`. Each hook finds its hold by walking up its parent processes, so it works for wrapped and auto-detected sessions alike. `doctor` shows whether they're approved and running. Details in [spec.md](spec.md#codex-hooks-v220-opt-in).
 
-**Design.** Opt-in setup step that adds lidsomnia's busy/idle hooks to `~/.codex/hooks.json`; you approve them once in Codex's hook review. Hooks map to holds via `LIDSOMNIA_ACTIVITY_FILE` for wrapped runs, and to adopted holds by session cwd otherwise.
+## Next: battery estimate
+
+Show the time left until the battery floor at the current drain in `status` and alerts, and warn on the phone before a low-battery release, the same way `idleSoon` warns before an idle one.
 
 ## Later / maybe
 
