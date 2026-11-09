@@ -2,8 +2,6 @@
 
 Keep your MacBook awake, **even with the lid closed on battery**, while a job runs. It's built for Claude Code Remote Control sessions you drive from your phone, and supports Codex too.
 
-> **Formerly lidless.** Homebrew 7 trusts formulas by name, so run `brew trust --formula vitkon/tap/lidsomnia && brew migrate lidless` once to move over. After that, the `lidless` command still works as an alias, and `~/.lidless` plus the old watchdog are migrated on first run. The existing sudoers rule keeps working.
-
 ```sh
 brew install vitkon/tap/lidsomnia   # or: git clone … && make install (→ ~/.local/bin)
 lidsomnia setup                     # once: sudoers rule for pmset + launchd watchdog (asks for your password)
