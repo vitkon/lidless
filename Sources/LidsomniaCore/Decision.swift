@@ -10,10 +10,14 @@ public struct DecisionInput: Sendable {
     public var manuallyReleased: Bool
     /// A phone "Keep awake" tap: no idle release before this.
     public var extendedUntil: Date?
+    /// The hold's reason from the last evaluation, for hysteresis (a heat release lasts until it cools).
+    public var previousReason: HoldReason?
 
     public init(kind: HoldKind, startedAt: Date, activity: Activity?, readings: Readings,
-                config: Config, now: Date, manuallyReleased: Bool, extendedUntil: Date? = nil) {
+                config: Config, now: Date, manuallyReleased: Bool, extendedUntil: Date? = nil,
+                previousReason: HoldReason? = nil) {
         self.extendedUntil = extendedUntil
+        self.previousReason = previousReason
         self.kind = kind
         self.startedAt = startedAt
         self.activity = activity
@@ -52,6 +56,9 @@ public func decide(_ i: DecisionInput) -> Decision {
     }
     if i.readings.thermal >= i.config.thermalLimit {
         return Decision(held: false, reason: .thermal)
+    }
+    if Heat.isHot(i.readings, config: i.config, wasHot: i.previousReason == .hot) {
+        return Decision(held: false, reason: .hot)
     }
     if let at = idleReleaseAt(i), i.now >= at {
         return Decision(held: false, reason: .idle)

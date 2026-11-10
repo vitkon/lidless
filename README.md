@@ -16,13 +16,15 @@ lidsomnia release                     # panic button
 
 - Any command keeps the Mac awake for as long as it runs.
 - `claude` sessions also get idle detection through per-run hooks. After 30 minutes without activity the hold is dropped, but the session keeps running. A new prompt takes the hold back.
-- Safety limits: the hold is dropped when the battery is ≤10% on battery or the chip's thermal state is `serious` or worse.
+- Safety limits: the hold is dropped when the battery is ≤10% on battery, the battery reaches 45 °C (bag mode), or the chip's thermal state is `serious` or worse. Your phone is warned before the battery and heat releases.
+- Battery stretch: while the lid is closed and something is held, Low Power Mode is on (battery only), and it's off again when you open the lid.
 - A watchdog resets `pmset disablesleep` within 60s if a wrapper dies without cleaning up.
 
 Config is in `~/.lidsomnia/config.json`. Every key is optional:
 
 ```json
-{ "idleTimeoutMinutes": 30, "batteryFloorPercent": 10, "thermalLimit": "serious", "notify": true }
+{ "idleTimeoutMinutes": 30, "batteryFloorPercent": 10, "batteryTempLimitC": 45, "thermalLimit": "serious",
+  "lowPowerWhenClosed": true, "notify": true }
 ```
 
 ### Sessions you forgot to wrap

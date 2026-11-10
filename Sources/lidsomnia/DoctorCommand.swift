@@ -8,7 +8,7 @@ func doctorCommand() -> Int32 {
     let fm = FileManager.default
     let probe = SystemProcessProbe()
 
-    let sudoAllowed = (try? shell("/usr/bin/sudo", ["-n", "-l", "/usr/bin/pmset", "-a", "disablesleep", "0"]))?.status == 0
+    let sudoAllowed = PmsetPowerControl().passwordless("/usr/bin/pmset -a disablesleep 0")
 
     // Watchdog
     let plist = (try? Data(contentsOf: agentPlistURL))
@@ -68,6 +68,9 @@ func doctorCommand() -> Int32 {
         unknownConfigKeys: configData.map(Doctor.unknownKeys(in:)) ?? [], alertsError: alertsError,
         claudeVersion: claudeVersion, readings: SystemReadings().read(), config: config)
     facts.codexVersion = codexVersion
+    let pmset = PmsetPowerControl()
+    facts.lowPowerSupported = pmset.lowPowerOnBattery() != nil
+    facts.lowPowerAllowed = !facts.lowPowerSupported || pmset.lowPowerAllowed()
     if let root = try? readCodexHooksFile(), let bin = CodexHooks.installedBinary(in: root) {
         facts.codexHooksBinary = bin
         facts.codexHooksBinaryExists = FileManager.default.isExecutableFile(atPath: bin)

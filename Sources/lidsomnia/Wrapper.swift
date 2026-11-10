@@ -98,7 +98,7 @@ final class Wrapper {
         let input = DecisionInput(
             kind: record.kind, startedAt: record.startedAt, activity: currentActivity(),
             readings: current, config: config, now: Date(), manuallyReleased: manuallyReleased,
-            extendedUntil: store.readExtension(pid: record.pid))
+            extendedUntil: store.readExtension(pid: record.pid), previousReason: record.reason)
         let decision = decide(input)
 
         if let at = Alerts.idleWarningDue(input, decision: decision, warnedFor: record.idleWarnedFor) {
@@ -112,7 +112,8 @@ final class Wrapper {
         }
 
         if record.held, !decision.held, decision.reason.isSafety, config.notify {
-            let why = decision.reason == .lowBattery ? "battery is low" : "the Mac is running hot"
+            let why = decision.reason == .lowBattery ? "battery is low"
+                : decision.reason == .hot ? "the battery is too hot" : "the Mac is running hot"
             notifier.notify("Letting the Mac sleep: \(why).")
         }
         record.held = decision.held
@@ -154,6 +155,7 @@ final class Wrapper {
         }
         do {
             let result = try reconciler.remove(pid: record.pid)
+            if !result.desired { applyLowPower(wanted: false, paths: paths, stamp: "") }
             if sleepAfter, !result.desired {
                 try power.sleepNow()
             }

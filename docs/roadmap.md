@@ -51,6 +51,10 @@ Opt-in busy/idle hooks in `~/.codex/hooks.json`, approved once with `/hooks`. Ea
 
 `status` and `doctor` show the time left until the battery floor, scaled from macOS's time-to-empty estimate. A `batterySoon` warning goes to the phone once per discharge, `batteryWarningMinutes` (15) before the floor, with a **Sleep now** button that releases every hold. There's no keep-awake button: the floor is a safety limit. Details in [spec.md](spec.md#battery-estimate-v230).
 
+## v2.4.0: bag mode and battery stretch (done)
+
+A heat limit on battery temperature (45 °C, `hotSoon` warning 3 °C before with Sleep now, holds again 5 °C cooler), lid state in `status`/`doctor`, and Low Power Mode while the lid is closed and something is held. The sudoers rule gains `pmset -b lowpowermode 0|1`; existing installs re-run `lidsomnia setup`. `doctor`'s sudoers check now looks for a passwordless entry instead of trusting `sudo -l <command>`. Details in [spec.md](spec.md#bag-mode-and-low-power-mode-v240).
+
 ## Next: run reports
 
 When a job ends, the `finished` alert also says how long the Mac was held, how much battery it used, and whether it was released early and why.

@@ -63,6 +63,7 @@ func applyPhoneControl(reconciler: Reconciler, config: Config, paths: LidsomniaP
                 } else {
                     // Confirm first: once asleep, nothing leaves the Mac.
                     sendAlert(.sleeping, record: r, readings: readings, exitCode: nil, config: config)
+                    applyLowPower(wanted: false, paths: paths, stamp: stamp)
                     try reconciler.power.sleepNow()
                 }
             } catch {
@@ -75,6 +76,7 @@ func applyPhoneControl(reconciler: Reconciler, config: Config, paths: LidsomniaP
                 for r in holds where !r.adopted { kill(r.pid, SIGUSR1) }
                 let all = HoldRecord(pid: 0, command: "all jobs", kind: .plain, startedAt: now, held: false, reason: .manual)
                 sendAlert(.sleeping, record: all, readings: readings, exitCode: nil, config: config)
+                applyLowPower(wanted: false, paths: paths, stamp: stamp)
                 try reconciler.power.sleepNow()
             } catch {
                 stderrLine("couldn't release all: \(error)")

@@ -6,6 +6,8 @@ public enum AlertKind: String, Codable, CaseIterable, Sendable {
     case idleSoon
     /// Warning before a low-battery release, with a Sleep now button.
     case batterySoon
+    /// Bag mode: warning before a heat release (Sleep now button), and the release itself.
+    case hotSoon, hot
     /// Confirmations of a button tap; always sent, like `test`.
     case extended, sleeping, released
 }
@@ -16,7 +18,7 @@ public struct AlertConfig: Codable, Equatable, Sendable {
     public var ntfyServer: String = "https://ntfy.sh"
     public var ntfyToken: String?
     public var webhookURL: String?
-    public var events: [AlertKind] = [.lowBattery, .batterySoon, .thermal, .idleSoon, .idle, .finished]
+    public var events: [AlertKind] = [.lowBattery, .batterySoon, .thermal, .hotSoon, .hot, .idleSoon, .idle, .finished]
     /// `finished` is only sent for jobs that ran at least this long.
     public var finishedMinMinutes: Double = 5
     /// `idleSoon` is sent this long before an idle release; 0 turns it off.
@@ -79,10 +81,14 @@ public struct AlertEvent: Codable, Equatable, Sendable {
     public var until: Date?
     /// Start of the hold, so buttons can name it exactly.
     public var startedAt: Date?
+    public var batteryTempC: Double?
+    public var lidClosed: Bool?
 
     public init(kind: AlertKind, host: String, command: String, pid: Int32, exitCode: Int32?,
                 durationSeconds: Int, batteryPercent: Int?, onBattery: Bool, thermal: ThermalLevel, at: Date,
-                until: Date? = nil, startedAt: Date? = nil) {
+                until: Date? = nil, startedAt: Date? = nil, batteryTempC: Double? = nil, lidClosed: Bool? = nil) {
+        self.batteryTempC = batteryTempC
+        self.lidClosed = lidClosed
         self.until = until
         self.startedAt = startedAt
         self.kind = kind
@@ -115,6 +121,7 @@ public enum Alerts {
         case .lowBattery: return .lowBattery
         case .thermal: return .thermal
         case .idle: return .idle
+        case .hot: return .hot
         case .active, .manual: return nil
         }
     }
@@ -148,6 +155,20 @@ public enum Alerts {
                 title: "Battery low soon on \(e.host): \(left) left",
                 body: "Battery is at \(pct). The Mac will sleep at \(config.batteryFloorPercent)%.\(tail)",
                 priority: 4, tags: ["battery"])
+        case .hotSoon:
+            let temp = e.batteryTempC.map(Heat.format) ?? "warm"
+            let bag = e.lidClosed == true ? "The lid is closed; if it's in a bag, give it some air. " : ""
+            let tail = Control.topic(config.alerts) != nil ? " Or let it sleep now." : ""
+            return AlertMessage(
+                title: "\(e.host) is getting warm: battery at \(temp)",
+                body: "\(bag)The Mac will sleep at \(Heat.format(config.batteryTempLimitC)) to protect the battery.\(tail)",
+                priority: 4, tags: ["thermometer"])
+        case .hot:
+            let temp = e.batteryTempC.map(Heat.format) ?? "hot"
+            return AlertMessage(
+                title: "\(e.host) is too hot: battery at \(temp)",
+                body: "Letting the Mac sleep to protect the battery. It holds again once the battery is below \(Heat.format(config.batteryTempLimitC - Heat.coolBy)). Job: \(job)",
+                priority: 4, tags: ["fire"])
         case .thermal:
             return AlertMessage(
                 title: "\(e.host) is running hot",
@@ -214,7 +235,7 @@ public enum Alerts {
             if ntfyActions == nil, e.kind == .idleSoon, let s = e.startedAt {
                 actions = Control.idleSoonActions(pid: e.pid, startedAt: s, config: a)
             }
-            if ntfyActions == nil, e.kind == .batterySoon {
+            if ntfyActions == nil, e.kind == .batterySoon || e.kind == .hotSoon {
                 actions = Control.actions([("Sleep now", .sleepAll)], config: a)
             }
             if !actions.isEmpty { payload["actions"] = actions }

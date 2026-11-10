@@ -44,6 +44,10 @@ public struct DoctorFacts: Sendable {
     public var codexHooksBinaryExists: Bool = true
     /// How long ago a Codex hook last ran; nil if never (not yet approved in `/hooks`).
     public var codexHooksLastRanAgo: TimeInterval? = nil
+    /// nil when this Mac has no Low Power Mode.
+    public var lowPowerSupported: Bool = true
+    /// The sudoers rule covers `pmset -b lowpowermode` (rules installed before 2.4.0 don't).
+    public var lowPowerAllowed: Bool = true
     public var readings: Readings
     public var config: Config
 
@@ -75,7 +79,7 @@ public struct DoctorFacts: Sendable {
 
 public enum Doctor {
     static let configKeys: Set<String> = ["idleTimeoutMinutes", "batteryFloorPercent", "thermalLimit", "notify",
-                                          "alerts", "autoDetect"]
+                                          "alerts", "autoDetect", "batteryTempLimitC", "lowPowerWhenClosed"]
     static let alertKeys: Set<String> = ["ntfyTopic", "ntfyServer", "ntfyToken", "webhookURL", "events",
                                          "finishedMinMinutes", "idleWarningMinutes", "batteryWarningMinutes",
                                          "phoneControl", "controlTopic"]
@@ -197,18 +201,52 @@ public enum Doctor {
         }
 
         let r = f.readings
-        let battery = r.batteryPercent.map { "\($0)%" } ?? "n/a"
         let lowBattery = r.onBattery && (r.batteryPercent ?? 100) <= f.config.batteryFloorPercent
         let hot = r.thermal >= f.config.thermalLimit
-        let estimate = Battery.minutesToFloor(r, floor: f.config.batteryFloorPercent)
-            .map { ", about \(Battery.format($0)) to the \(f.config.batteryFloorPercent)% floor" } ?? ""
-        let summary = "\(r.onBattery ? "battery" : "AC"), \(battery)\(estimate), thermal \(r.thermal.rawValue)"
-        if lowBattery || hot {
+        let summary = Readings.summary(r, config: f.config)
+        let tooWarm = (r.batteryTempC ?? 0) >= f.config.batteryTempLimitC
+        if lowBattery || hot || tooWarm {
             add("power", .warn, summary + (lowBattery ? "; battery is at the floor, holds will be released"
-                                                      : "; running hot, holds will be released"))
+                                           : tooWarm ? "; battery is too hot, holds will be released"
+                                           : "; running hot, holds will be released"))
         } else {
             add("power", .ok, summary)
         }
+
+        if f.lowPowerSupported {
+            if !f.config.lowPowerWhenClosed {
+                add("low power", .ok, "off (\"lowPowerWhenClosed\": false)")
+            } else if f.lowPowerAllowed {
+                add("low power", .ok, "turns on while the lid is closed and something is held")
+            } else {
+                add("low power", .warn, "the sudoers rule predates Low Power Mode support, so it stays off",
+                    fix: "lidsomnia setup")
+            }
+        }
         return out
+    }
+}
+
+/// Reads `sudo -n -l`. Asking `sudo -l <command>` isn't enough: an admin's `(ALL) ALL` rule
+/// "permits" everything, just with a password the watchdog can't type.
+public enum Sudoers {
+    public static func passwordless(_ command: String, in listing: String) -> Bool {
+        // An entry starts with "(runas)"; a long one may continue on more-indented lines.
+        var entries: [String] = []
+        for line in listing.split(separator: "\n") {
+            let t = line.trimmingCharacters(in: .whitespaces)
+            if t.hasPrefix("(") {
+                entries.append(t)
+            } else if line.hasPrefix(" "), !entries.isEmpty, !t.isEmpty {
+                entries[entries.count - 1] += " " + t
+            } else {
+                entries.append("")  // a header: stop continuing the previous entry
+            }
+        }
+        return entries.contains { entry in
+            guard let r = entry.range(of: "NOPASSWD:") else { return false }
+            let commands = entry[r.upperBound...].split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            return commands.contains(command) || commands.contains("ALL")
+        }
     }
 }

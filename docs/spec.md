@@ -79,10 +79,11 @@ In order:
 1. `manuallyReleased` (the hold file was removed by `lidsomnia release`) → release, `manual`. Stays released for the rest of the run.
 2. On battery and `batteryPercent <= batteryFloorPercent` → release, `lowBattery`.
 3. `thermalState >= thermalLimit` → release, `thermal`. Re-acquired automatically once below the limit (with the default `serious`, that means `fair` or `nominal`).
-4. `kind == claude`, state idle, and `now - lastActivity >= idleTimeoutMinutes` → release, `idle`. A later `busy` hook re-acquires.
-5. Otherwise → hold, `active`.
+4. Battery temperature `>= batteryTempLimitC` → release, `hot`. Re-acquired only once it's 5 °C below the limit (see [bag mode](#bag-mode-and-low-power-mode-v240)).
+5. `kind == claude`, state idle, and `now - lastActivity >= idleTimeoutMinutes` → release, `idle`. A later `busy` hook re-acquires.
+6. Otherwise → hold, `active`.
 
-On a transition from held → released for `lowBattery` or `thermal`, send a macOS notification (if `notify`).
+On a transition from held → released for `lowBattery`, `thermal` or `hot`, send a macOS notification (if `notify`).
 
 ## Safety defaults
 
@@ -93,6 +94,8 @@ On a transition from held → released for `lowBattery` or `thermal`, send a mac
   "idleTimeoutMinutes": 30,
   "batteryFloorPercent": 10,
   "thermalLimit": "serious",
+  "batteryTempLimitC": 45,
+  "lowPowerWhenClosed": true,
   "notify": true
 }
 ```
@@ -125,7 +128,7 @@ Session files miss one case: a single long command with no session writes looks 
 
 | Check | Fails / warns when |
 |---|---|
-| sudoers | `sudo -n -l /usr/bin/pmset -a disablesleep 0` is refused (fail → `lidsomnia setup`) |
+| sudoers | `sudo -n -l` lists no passwordless entry for `/usr/bin/pmset -a disablesleep 0` (fail → `lidsomnia setup`). Asking `sudo -l <command>` isn't used: an admin's `(ALL) ALL` "permits" everything, with a password the watchdog can't type |
 | watchdog | plist missing, its binary missing, or not loaded (fail); points at a different binary than the one running, or last exit ≠ 0 (warn) → `lidsomnia setup --agent-only` |
 | binary | more than one `lidsomnia` on PATH (warn) |
 | sleep flag | `SleepDisabled 1` with no live held hold (fail → `lidsomnia release`) |
@@ -134,7 +137,8 @@ Session files miss one case: a single long command with no session writes looks 
 | alerts | invalid ntfy server or webhook URL (fail); configured → suggests `lidsomnia test-alert` |
 | auto-detect | on but the watchdog isn't loaded (fail) |
 | claude | not on PATH (warn) |
-| power | battery at the floor or thermal at the limit, so holds would be released (warn) |
+| power | battery at the floor, battery temperature or thermal at the limit, so holds would be released (warn). Shows the time to the floor, battery temperature and lid state |
+| low power | `lowPowerWhenClosed` is on but the sudoers rule predates it (warn → `lidsomnia setup`) |
 
 ## Auto-detect (v2.0.2)
 
@@ -158,7 +162,7 @@ With the lid shut you're on your phone, so a macOS notification is never seen. l
     "ntfyServer": "https://ntfy.sh",
     "ntfyToken": "tk_…",
     "webhookURL": "https://example.com/hook",
-    "events": ["lowBattery", "batterySoon", "thermal", "idleSoon", "idle", "finished"],
+    "events": ["lowBattery", "batterySoon", "thermal", "hotSoon", "hot", "idleSoon", "idle", "finished"],
     "finishedMinMinutes": 5,
     "idleWarningMinutes": 5,
     "batteryWarningMinutes": 15,
@@ -174,7 +178,8 @@ All keys are optional; alerts are off until `ntfyTopic` or `webhookURL` is set.
 |---|---|
 | `idleSoon` | `idleWarningMinutes` before an idle release (once per release time), with phone buttons |
 | `batterySoon` | the battery is estimated to reach the floor within `batteryWarningMinutes` while something is held (once per discharge), with a Sleep now button |
-| `lowBattery`, `thermal`, `idle` | a hold goes from held to released for that reason |
+| `hotSoon` | the battery is within 3 °C of `batteryTempLimitC` while something is held (once per warm spell), with a Sleep now button |
+| `lowBattery`, `thermal`, `hot`, `idle` | a hold goes from held to released for that reason |
 | `finished` | the wrapped command exits after running at least `finishedMinMinutes`; includes exit code and duration |
 | `test` | `lidsomnia test-alert` (ignores `events`) |
 
@@ -204,13 +209,27 @@ Alert buttons that act on the Mac. A button can't usefully appear on the `idle` 
 - **Warning.** On each 60 s run the watchdog sends one `batterySoon` alert when something is held and the estimate is within `batteryWarningMinutes` (default 15; 0 turns it off). It's machine-wide, so there's one alert however many jobs are held. `~/.lidsomnia/battery-warned` records it; it re-arms when the Mac is on AC or nothing is held.
 - **Button.** **Sleep now** posts `sleep-all`: every hold is released (like `release`), a `sleeping` confirmation is sent, then `pmset sleepnow`. There's no keep-awake button, because the battery floor is a safety limit; plug in to keep going.
 
+## Bag mode and Low Power Mode (v2.4.0)
+
+The real risk of closed-lid running is a Mac working hard inside a bag.
+
+- **Readings.** Battery temperature (`Temperature` on the `AppleSmartBattery` IOKit service, in hundredths of a °C) and lid state (`AppleClamshellState` on `IOPMrootDomain`). Neither needs root. `status` and `doctor` show both.
+- **Why battery temperature.** It climbs steadily in an enclosed space and it's what heat damages. macOS's thermal state only reaches `serious` once the chip is throttling hard. Chip temperatures need root (`powermetrics`) and swing with every burst of work.
+- **Limit.** `batteryTempLimitC` (default 45). At the limit the hold is released with reason `hot` and a `hot` alert; it comes back once the battery is 5 °C cooler, so it doesn't flap around the limit. The rule applies whether or not the lid is closed; with the lid open you're at the Mac, and a release only restores normal sleep.
+- **Warning.** The watchdog sends one `hotSoon` alert per warm spell when the battery is within 3 °C of the limit and something is held, saying the lid is closed when it is. It has a **Sleep now** button (`sleep-all`). `~/.lidsomnia/heat-warned` records it; it re-arms once the battery is 5 °C below the limit or nothing is held.
+- **Defaults are a first guess.** 45 °C is the usual upper limit for charging lithium-ion cells. A first in-bag sample on a 14" M1 Max (two Claude sessions, 11–25 W) read 30–31 °C; tune after more real runs.
+- **Low Power Mode.** With `lowPowerWhenClosed` (default on), the watchdog runs `pmset -b lowpowermode 1` while the lid is closed and something is held, and turns it back off when the lid opens or the last hold ends (within a minute; also straight away on `release`, `uninstall`, a phone Sleep now, and when the last wrapper exits). Battery power only, so it never applies on AC. Agent sessions mostly wait on the network, so the slower chip costs little; it draws less and runs cooler, which helps the heat limit.
+- **Your setting wins.** `~/.lidsomnia/low-power` records what lidsomnia did. If Low Power Mode was already on, lidsomnia never touches it. If you turn it off while lidsomnia had it on, it stays off until the next time it's wanted from scratch. Without the updated sudoers rule it quietly does nothing and `doctor` says so.
+
 ## Privilege model
 
 `lidsomnia setup` writes `/etc/sudoers.d/lidsomnia` (mode 0440, validated with `visudo -cf` before installing):
 
 ```
-<user> ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 0, /usr/bin/pmset -a disablesleep 1, /usr/bin/pmset sleepnow
+<user> ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 0, /usr/bin/pmset -a disablesleep 1, /usr/bin/pmset sleepnow, /usr/bin/pmset -b lowpowermode 0, /usr/bin/pmset -b lowpowermode 1
 ```
+
+The two `lowpowermode` entries arrived in 2.4.0; rules installed earlier keep working, and Low Power Mode stays off until `lidsomnia setup` is run again.
 
 lidsomnia calls `sudo -n /usr/bin/pmset …` so it fails fast instead of prompting. If the rule is missing, the wrapper prints a one-line hint to run `lidsomnia setup` and still runs the command (without keeping the Mac awake).
 

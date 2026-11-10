@@ -47,7 +47,7 @@ func sendAlert(_ kind: AlertKind, record: HoldRecord, readings r: Readings, exit
         kind: kind, host: AlertSender.hostName(), command: record.command, pid: record.pid,
         exitCode: exitCode, durationSeconds: Int(Date().timeIntervalSince(record.startedAt)),
         batteryPercent: r.batteryPercent, onBattery: r.onBattery, thermal: r.thermal, at: Date(),
-        until: until, startedAt: record.startedAt)
+        until: until, startedAt: record.startedAt, batteryTempC: r.batteryTempC, lidClosed: r.lidClosed)
     do {
         for res in AlertSender.send(try Alerts.requests(for: event, config: config)) where !res.ok {
             stderrLine("alert to \(res.channel) failed: \(res.status.map { "HTTP \($0)" } ?? res.error ?? "unknown")")

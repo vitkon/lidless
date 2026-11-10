@@ -40,19 +40,28 @@ public struct Readings: Equatable, Sendable {
     /// macOS's estimate of minutes left on battery at the current load; nil on AC or while
     /// it's still calculating.
     public var minutesToEmpty: Int?
+    /// Battery temperature in °C; nil without a battery.
+    public var batteryTempC: Double?
+    /// nil on Macs without a lid.
+    public var lidClosed: Bool?
 
-    public init(onBattery: Bool, batteryPercent: Int?, thermal: ThermalLevel, minutesToEmpty: Int? = nil) {
+    public init(onBattery: Bool, batteryPercent: Int?, thermal: ThermalLevel, minutesToEmpty: Int? = nil,
+                batteryTempC: Double? = nil, lidClosed: Bool? = nil) {
         self.onBattery = onBattery
         self.batteryPercent = batteryPercent
         self.thermal = thermal
         self.minutesToEmpty = minutesToEmpty
+        self.batteryTempC = batteryTempC
+        self.lidClosed = lidClosed
     }
 }
 
 public enum HoldReason: String, Codable, Sendable {
     case active, idle, lowBattery, thermal, manual
+    /// The battery is at `batteryTempLimitC` (bag mode).
+    case hot
 
-    public var isSafety: Bool { self == .lowBattery || self == .thermal }
+    public var isSafety: Bool { self == .lowBattery || self == .thermal || self == .hot }
 }
 
 /// Written by the wrapper to `<pid>.json`.
@@ -112,6 +121,10 @@ public struct Config: Codable, Equatable, Sendable {
     public var alerts = AlertConfig()
     /// Also keep the Mac awake for `claude` sessions not started through lidsomnia.
     public var autoDetect: Bool = false
+    /// Release when the battery reaches this temperature (°C); warn 3 °C before.
+    public var batteryTempLimitC: Double = 45
+    /// Turn on Low Power Mode (battery only) while the lid is closed and something is held.
+    public var lowPowerWhenClosed: Bool = true
 
     public init() {}
 
@@ -124,6 +137,8 @@ public struct Config: Codable, Equatable, Sendable {
         notify = try c.decodeIfPresent(Bool.self, forKey: .notify) ?? d.notify
         alerts = try c.decodeIfPresent(AlertConfig.self, forKey: .alerts) ?? d.alerts
         autoDetect = try c.decodeIfPresent(Bool.self, forKey: .autoDetect) ?? d.autoDetect
+        batteryTempLimitC = try c.decodeIfPresent(Double.self, forKey: .batteryTempLimitC) ?? d.batteryTempLimitC
+        lowPowerWhenClosed = try c.decodeIfPresent(Bool.self, forKey: .lowPowerWhenClosed) ?? d.lowPowerWhenClosed
     }
 
     public static func decode(_ data: Data) throws -> Config {

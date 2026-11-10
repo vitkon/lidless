@@ -1,5 +1,6 @@
 import Darwin
 import Foundation
+import IOKit
 import IOKit.ps
 import LidsomniaCore
 
@@ -49,6 +50,31 @@ struct PmsetPowerControl: PowerControl {
         try sudoPmset(["sleepnow"])
     }
 
+    /// Low Power Mode for battery power, or nil if this Mac doesn't have it.
+    func lowPowerOnBattery() -> Bool? {
+        guard let out = try? shell("/usr/bin/pmset", ["-g", "custom"]).stdout else { return nil }
+        var inBattery = false
+        for line in out.split(separator: "\n") {
+            if !line.hasPrefix(" ") { inBattery = line.hasPrefix("Battery Power"); continue }
+            let w = line.split(whereSeparator: \.isWhitespace)
+            if inBattery, w.first == "lowpowermode" { return w.last == "1" }
+        }
+        return nil
+    }
+
+    func setLowPowerOnBattery(_ on: Bool) throws {
+        try sudoPmset(["-b", "lowpowermode", on ? "1" : "0"])
+    }
+
+    /// The sudoers rule covers Low Power Mode (rules from before 2.4.0 don't).
+    func lowPowerAllowed() -> Bool { passwordless("/usr/bin/pmset -b lowpowermode 1") }
+
+    /// The sudoers rule lets this run without a password.
+    func passwordless(_ command: String) -> Bool {
+        guard let r = try? shell("/usr/bin/sudo", ["-n", "-l"]), r.status == 0 else { return false }
+        return Sudoers.passwordless(command, in: r.stdout)
+    }
+
     private func sudoPmset(_ args: [String]) throws {
         let r = try shell("/usr/bin/sudo", ["-n", "/usr/bin/pmset"] + args)
         guard r.status == 0 else {
@@ -77,8 +103,19 @@ struct SystemReadings: PowerReadingsSource {
                 if let t = desc["Time to Empty"] as? Int, t > 0 { toEmpty = t }  // -1 while calculating
             }
         }
+        let temp = (Self.registry("AppleSmartBattery", "Temperature") as? Int).map { Double($0) / 100 }
         return Readings(onBattery: onBattery, batteryPercent: percent, thermal: Self.thermal(),
-                        minutesToEmpty: onBattery ? toEmpty : nil)
+                        minutesToEmpty: onBattery ? toEmpty : nil,
+                        batteryTempC: temp.flatMap { $0 > 0 ? $0 : nil },
+                        lidClosed: Self.registry("IOPMrootDomain", "AppleClamshellState") as? Bool)
+    }
+
+    /// A property of the first IOKit service of that class, or nil (no battery, no lid, …).
+    static func registry(_ serviceClass: String, _ key: String) -> Any? {
+        let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching(serviceClass))
+        guard service != 0 else { return nil }
+        defer { IOObjectRelease(service) }
+        return IORegistryEntryCreateCFProperty(service, key as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue()
     }
 
     static func thermal() -> ThermalLevel {

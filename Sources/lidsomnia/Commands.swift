@@ -46,7 +46,6 @@ func reapCommand() -> Int32 {
     let config = Config.load(from: paths.config)
     let stamp = ISO8601DateFormatter().string(from: Date())
     applyPhoneControl(reconciler: reconciler, config: config, paths: paths, stamp: stamp)
-    warnBeforeLowBattery(store: store, probe: probe, config: config, paths: paths, stamp: stamp)
     do {
         let holds = store.list()
         if config.autoDetect || holds.contains(where: \.adopted) {
@@ -69,33 +68,12 @@ func reapCommand() -> Int32 {
         if !r.removed.isEmpty || r.changed {
             print("\(stamp) reaped \(r.removed) sleepDisabled=\(r.desired)")
         }
+        machineGuards(store: store, probe: probe, config: config, paths: paths, stamp: stamp)
         return 0
     } catch {
         stderrLine("\(error)")
         return 1
     }
-}
-
-/// One phone warning per discharge, before the battery floor releases every hold. Machine-wide,
-/// so it lives here rather than in each wrapper.
-func warnBeforeLowBattery(store: HoldStore, probe: ProcessProbe, config: Config, paths: LidsomniaPaths, stamp: String) {
-    let marker = paths.home.appendingPathComponent("battery-warned")
-    let r = SystemReadings().read()
-    let held = store.list().filter { $0.held && probe.isLive($0) }
-    if Battery.shouldRearm(r, holding: !held.isEmpty) {
-        try? FileManager.default.removeItem(at: marker)
-        return
-    }
-    let warned = FileManager.default.fileExists(atPath: marker.path)
-    guard Battery.warningDue(r, config: config, holding: true, alreadyWarned: warned),
-          let left = Battery.minutesToFloor(r, floor: config.batteryFloorPercent), let first = held.first
-    else { return }
-    FileManager.default.createFile(atPath: marker.path, contents: nil)
-    print("\(stamp) battery: about \(left)m to the \(config.batteryFloorPercent)% floor, warned")
-    var job = first
-    if held.count > 1 { job.command = "\(held.count) jobs" }
-    sendAlert(.batterySoon, record: job, readings: r, exitCode: nil, config: config,
-              until: Date().addingTimeInterval(Double(left) * 60))
 }
 
 /// Adopted sessions have no hooks; their activity is the newest transcript/session-file write
@@ -117,7 +95,8 @@ func evaluateAdopted(reconciler: Reconciler, probe: ProcessProbe, config: Config
         let input = DecisionInput(
             kind: r.kind, startedAt: r.startedAt, activity: activity,
             readings: readings, config: config, now: Date(),
-            manuallyReleased: r.reason == .manual && !r.held, extendedUntil: store.readExtension(pid: r.pid))
+            manuallyReleased: r.reason == .manual && !r.held, extendedUntil: store.readExtension(pid: r.pid),
+            previousReason: r.reason)
         let decision = decide(input)
         if let at = Alerts.idleWarningDue(input, decision: decision, warnedFor: r.idleWarnedFor) {
             sendAlert(.idleSoon, record: r, readings: readings, exitCode: nil, config: config, until: at)
@@ -144,9 +123,10 @@ func evaluateAdopted(reconciler: Reconciler, probe: ProcessProbe, config: Config
 }
 
 func releaseCommand() -> Int32 {
-    let (reconciler, _) = makeReconciler()
+    let (reconciler, paths) = makeReconciler()
     do {
         try reconciler.releaseAll()
+        applyLowPower(wanted: false, paths: paths, stamp: "")
         print("released all holds; sleep is enabled")
         return 0
     } catch {
@@ -162,15 +142,13 @@ func statusCommand() -> Int32 {
     let r = SystemReadings().read()
     let disabled = (try? PmsetPowerControl().sleepDisabled()).map { $0 ? "1 (Mac stays awake)" : "0 (normal)" } ?? "unknown"
     let config = Config.load(from: paths.config)
-    let estimate = Battery.minutesToFloor(r, floor: config.batteryFloorPercent)
-        .map { ", about \(Battery.format($0)) to the \(config.batteryFloorPercent)% floor" } ?? ""
-    let battery = (r.batteryPercent.map { "\($0)%" } ?? "n/a") + estimate
+    let lowPower = (try? String(contentsOf: lowPowerMarkerURL(paths), encoding: .utf8)) == LowPower.Marker.on.rawValue
 
     print("SleepDisabled  \(disabled)")
-    print("power          \(r.onBattery ? "battery" : "AC"), \(battery), thermal \(r.thermal.rawValue)")
+    print("power          \(Readings.summary(r, config: config))\(lowPower ? ", low power mode on (lid closed)" : "")")
     print("setup          sudoers \(sudoersInstalled ? "✓" : "✗ (run `lidsomnia setup`)"), watchdog \(FileManager.default.fileExists(atPath: agentPlistURL.path) ? "✓" : "✗")")
     print("alerts         \(config.alerts.isConfigured ? config.alerts.channels.joined(separator: ", ") + " (" + config.alerts.events.map(\.rawValue).joined(separator: ", ") + ")" : "off (see `lidsomnia test-alert`)")")
-    print("config         idle \(Int(config.idleTimeoutMinutes))m, battery floor \(config.batteryFloorPercent)%, thermal limit \(config.thermalLimit.rawValue), auto-detect \(config.autoDetect ? "on" : "off")")
+    print("config         idle \(Int(config.idleTimeoutMinutes))m, battery floor \(config.batteryFloorPercent)%, battery heat limit \(Heat.format(config.batteryTempLimitC)), thermal limit \(config.thermalLimit.rawValue), auto-detect \(config.autoDetect ? "on" : "off")")
 
     let holds = store.list()
     if holds.isEmpty {
@@ -232,7 +210,7 @@ func setupCommand(agentOnly: Bool = false) -> Int32 {
     let user = NSUserName()
     let rule = """
     # Installed by lidsomnia — allows toggling closed-lid sleep without a password.
-    \(user) ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 0, /usr/bin/pmset -a disablesleep 1, /usr/bin/pmset sleepnow
+    \(user) ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 0, /usr/bin/pmset -a disablesleep 1, /usr/bin/pmset sleepnow, /usr/bin/pmset -b lowpowermode 0, /usr/bin/pmset -b lowpowermode 1
 
     """
     do {
@@ -308,9 +286,10 @@ func uninstallCommand() -> Int32 {
 
     if removeCodexHooks() { print("✓ codex hooks removed from \(codexHooksURL.path)") }
 
-    let (reconciler, _) = makeReconciler()
+    let (reconciler, paths) = makeReconciler()
     do {
         try reconciler.releaseAll()
+        applyLowPower(wanted: false, paths: paths, stamp: "")
         print("✓ holds released, sleep enabled")
     } catch {
         stderrLine("\(error)")
